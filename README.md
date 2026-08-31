@@ -1,6 +1,6 @@
-# Type-Erased Audio Parameters
+# Using Type Erasure to Extend APIs You Don't Own: A Case Study From Audio Plugin Development
 
-## Audio Developer Conference Japan 2026 Talk by Jan Wilczek
+## CppCon 2026 Talk by Jan Wilczek
 
 **The latest version of slides is in the [*slides-export.pdf* file](./slides-export.pdf).**
 

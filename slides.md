@@ -28,23 +28,15 @@ fonts:
   sans: Montserrat, Open Sans
   mono: CaskaydiaCove Nerd Font
   local: CaskaydiaCove Nerd Font
-layout: image
-image: ./assets/TypeErasedParameter.png
 ---
 
-<h1 class="text-black [text-shadow:_-1px_-1px_0_white,_1px_-1px_0_white,_-1px_1px_0_white,_1px_1px_0_white]">
-Type-Erased Audio Parameters
-</h1>
+# Using Type Erasure to Extend APIs You Don't Own
 
-<h2 class="text-black [text-shadow:_-1px_-1px_0_white,_1px_-1px_0_white,_-1px_1px_0_white,_1px_1px_0_white]">
-A New Approach to an Old Problem
-</h2>
+## A Case Study From Audio Plugin Development
 
-<div class="text-black mt-4">
-Jan Wilczek (WolfSound)
+### Jan Wilczek (think-cell)
 
-ADC Japan 2026
-</div>
+The Dutch C++ Group Meetup, Amsterdam, September 4th, 2026
 
 ---
 
@@ -53,48 +45,30 @@ ADC Japan 2026
 <v-clicks>
 
 - Jan Wilczek \[Yan Vil-check\]
-- Audio programming consultant & educator
-- Founder of TheWolfSound.com blog & YouTube channel on audio programming
-- WolfTalk podcast host
-- Trainer
-    - conference workshops
-    - in-house training on DSP/JUCE
-- Online course creator
-    - DSP Pro on digital audio signal processing
-    - Official JUCE C++ framework audio plugin development course (over 4,400 students enrolled)
+- C++ Speaker at think-cell
+- Founder of TheWolfSound.com & online course creator
 
 </v-clicks>
 
-<!-- Who here is a student of the JUCE course? Please, interrupt me. I will be showing a lot of code so you may get lost. Please, stop me and ask question, even if it's just because you fell asleep -->
-
+---
+layout: cover
 ---
 
-<img class="mb-2" src="./assets/Japan_Poland_Locator.png" width="80%"/>
+<img src="./assets/tc_homepage_hero.webp" class="w-full h-full"/>
 
-<div class="grid grid-cols-2 gap-4">
-  <div>
-        <img class="border-2" src="./assets/Flag_of_Poland.svg.webp"/>
-  </div>
-  <div>
-        <img class="border-2" src="./assets/Flag_of_Japan.svg.webp"/>
-  </div>
-</div>
-
-*Source: https://en.wikipedia.org/wiki/Japan-Poland_relations, accessed May 31, 2026.*
+<!-- Please, interrupt me. I will be showing a lot of code so you may get lost. Please, stop me and ask question, even if it's just because you fell asleep -->
 
 ---
 layout: center
 ---
 
-# Who here develops or uses audio plugins for digital audio workstations?
-
-<!-- either professionally or as a hobby? -->
+# Who here knows what audio plugins for digital audio workstations are?
 
 ---
 layout: center
 ---
 
-# Who here uses JUCE to develop plugins?
+# Who here has heard about the JUCE C++ framework?
 
 ---
 
