@@ -62,13 +62,13 @@ layout: cover
 layout: center
 ---
 
-# Who here knows what audio plugins for digital audio workstations are?
+# Who knows what audio plugins for digital audio workstations are?
 
 ---
 layout: center
 ---
 
-# Who here has heard about the JUCE C++ framework?
+# Who has heard about the JUCE C++ framework?
 
 ---
 
