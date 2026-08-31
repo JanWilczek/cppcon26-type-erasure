@@ -36,7 +36,9 @@ fonts:
 
 ### Jan Wilczek (think-cell)
 
-The Dutch C++ Group Meetup, Amsterdam, September 4th, 2026
+The Dutch C++ Group Meetup
+
+Amsterdam, September 4th, 2026
 
 ---
 
@@ -69,6 +71,89 @@ layout: center
 ---
 
 # Who has heard about the JUCE C++ framework?
+
+---
+layout: cover
+---
+
+<img src="./assets/ableton-live.png" class="h-120 w-auto"/>
+
+<!-- - Here's how a modern DAW looks like tracks, transport, assets, and... plugins -->
+---
+
+# Audio plugins
+
+<img src="./assets/Many_plugin_hosts_with_many_plugins.png" class="h-100"/>
+
+<!-- - Plugins extend DAW capabilities: think sound synthesizers, and audio effects such as reverb -->
+
+---
+
+# Audio plugin formats
+
+<img src="./assets/Plugin_API.png" class="h-50 w-auto"/>
+
+ <!-- DAWs communicate with plugins via plugin APIs also called plugin formats -->
+
+---
+
+# Audio plugin formats
+
+<img src="./assets/Plugins_in_formats.png" class="h-50 w-auto"/>
+
+ <!-- There are many of them... -->
+
+---
+
+# JUCE C++ framework
+
+<img src="./assets/JUCE_is_the_magical_tool.png" class="h-50 w-auto"/>
+
+<!-- The JUCE C++ framework allows having a single codebase to generate wrappers for most of the mainstream plugin formats -->
+
+ <!-- It also allows general-purpose cross-platform app creation (think Qt) -->
+
+---
+    - But today, we're not talking about audio processing algorithms, but about state management in audio plugins, in particular, audio parameters.
+    - Plugins, in particular plugins created with JUCE, consist of two main classes: processor and editor. Think editor=UI and processor=audio processing, host communication, state management, and everything else.
+    - Part of the plugin's state are parameters; user-adjustable, UI-displayable, audio-controlling values.
+        - As an example, let's consider a plugin's volume, also called the gain. It can be represented as a floating-point value in the [0, 1] range that scales the plugin's output. 1 means no change in volume, and 0 means complete silence. Let's take a look at the requirements of such a parameter:
+            - it controls the volume of the sound output by the plugin
+            - it must be displayed in the UI
+            - it must be reported to the host to meet its requirements (requirement of plugin APIs)
+            - it can be adjusted by the user via a slider in the plugin's UI
+            - it can be adjusted by the user in host's automation view
+            - it must be persisted between DAW project reloads
+            - it should be easy to serialize for user presets
+            - it's access must be real-time-safe (read/written on the audio thread, updated on the UI thread)
+    - JUCE provides `setStateInformation()` and `getStateInformation()` callbacks in the PluginProcessor to allows reading and writing plugin state (incl. parameters).
+    - We discussed a floating-point parameter but JUCE provides four types of parameters; we can create further types by extending one of the parameter classes.
+        - We cannot own the parameter classes (no unique_ptr, no values) to avoid double delete
+    - How does it all relate to type erasure? Well, we have to keep track of them somehow.
+    - I wanted a serialization format that allows state saving as well as preset handling
+    - Show value-based approach
+    - Show type-erased approach
+    - Conclusion: "A good use of Type Erasure is to hold a collection of strongly-typed objects (that may or may not share a base class), when the types of objects are not known in advance (or we have no control over those types) and we want to perform common actions for all elements of the collection."
+    - Example from think-cell: `any_range_ref`
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 ---
 
