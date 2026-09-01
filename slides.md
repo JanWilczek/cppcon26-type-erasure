@@ -99,7 +99,7 @@ layout: cover
 
 # Audio plugin formats
 
-<img src="./assets/Plugins_in_formats.png" class="h-50 w-auto"/>
+<img src="./assets/Plugins_in_formats.png" class="h-75 w-auto"/>
 
  <!-- There are many of them... -->
 
@@ -107,57 +107,51 @@ layout: cover
 
 # JUCE C++ framework
 
-<img src="./assets/JUCE_is_the_magical_tool.png" class="h-50 w-auto"/>
+<img src="./assets/JUCE_is_the_magical_tool.png" class="h-75 w-auto"/>
 
 <!-- The JUCE C++ framework allows having a single codebase to generate wrappers for most of the mainstream plugin formats -->
 
  <!-- It also allows general-purpose cross-platform app creation (think Qt) -->
 
----
-    - But today, we're not talking about audio processing algorithms, but about state management in audio plugins, in particular, audio parameters.
-    - Plugins, in particular plugins created with JUCE, consist of two main classes: processor and editor. Think editor=UI and processor=audio processing, host communication, state management, and everything else.
-    - Part of the plugin's state are parameters; user-adjustable, UI-displayable, audio-controlling values.
-        - As an example, let's consider a plugin's volume, also called the gain. It can be represented as a floating-point value in the [0, 1] range that scales the plugin's output. 1 means no change in volume, and 0 means complete silence. Let's take a look at the requirements of such a parameter:
-            - it controls the volume of the sound output by the plugin
-            - it must be displayed in the UI
-            - it must be reported to the host to meet its requirements (requirement of plugin APIs)
-            - it can be adjusted by the user via a slider in the plugin's UI
-            - it can be adjusted by the user in host's automation view
-            - it must be persisted between DAW project reloads
-            - it should be easy to serialize for user presets
-            - it's access must be real-time-safe (read/written on the audio thread, updated on the UI thread)
-    - JUCE provides `setStateInformation()` and `getStateInformation()` callbacks in the PluginProcessor to allows reading and writing plugin state (incl. parameters).
-    - We discussed a floating-point parameter but JUCE provides four types of parameters; we can create further types by extending one of the parameter classes.
-        - We cannot own the parameter classes (no unique_ptr, no values) to avoid double delete
-    - How does it all relate to type erasure? Well, we have to keep track of them somehow.
-    - I wanted a serialization format that allows state saving as well as preset handling
-    - Show value-based approach
-    - Show type-erased approach
-    - Conclusion: "A good use of Type Erasure is to hold a collection of strongly-typed objects (that may or may not share a base class), when the types of objects are not known in advance (or we have no control over those types) and we want to perform common actions for all elements of the collection."
-    - Example from think-cell: `any_range_ref`
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+ <!-- But today, we're not talking about audio processing algorithms, but about state management in audio plugins, in particular, audio parameters. -->
 
 ---
 
-# Key terms
+# Plugin processor and editor
+
+<img src="./assets/Processor-Editor_split.png" />
+
+ <!-- Plugins, in particular plugins created with JUCE, consist of two main classes: processor and editor. Think editor=UI and processor=audio processing, host communication, state management, and everything else. -->
+ <!-- Part of the plugin's state are parameters; user-adjustable, UI-displayable, audio-controlling values. -->
+
+---
+
+# Gain parameter example
+
+<img src="./assets/gain.jpeg" class="h-85"/>
+
+ <!-- As an example, let's consider a plugin's volume, also called the gain. It can be represented as a floating-point value in the [0, 1] range that scales the plugin's output. 1 means no change in volume, and 0 means complete silence. Let's take a look at the requirements of such a parameter: -->
+
+---
+
+# Gain parameter requirements
+
+<v-clicks>
+
+- it controls the volume of the sound output by the plugin
+- it must be displayed in the UI
+- it must be reported to the host to meet its requirements (requirement of plugin APIs)
+- it can be adjusted by the user via a slider in the plugin's UI
+- it can be adjusted by the user in host's automation view
+- it must be persisted between DAW project reloads
+- it should be easy to serialize for user presets
+- it's access must be real-time-safe (read/written on the audio thread, updated on the UI thread)
+
+</v-clicks>
+
+---
+
+# Recap
 
 <v-clicks>
 
@@ -243,17 +237,25 @@ PluginEditor --> Parameters
 
 </v-clicks>
 
+ <!-- We discussed a floating-point parameter but JUCE provides four types of parameters; we can create further types by extending one of the parameter classes. -->
+
+---
+layout: center
 ---
 
-<style> .slidev-layout { zoom: 60%; }</style>
+# How do we use parameters?
+
+---
+
+<style> .slidev-layout { zoom: 70%; }</style>
 
 # Plugin processor
 
-```cpp {all|40}
-class EdenSynthAudioProcessor : public AudioProcessor {
+```cpp
+class PluginProcessor : public AudioProcessor {
 public:
-  EdenSynthAudioProcessor();
-  ~EdenSynthAudioProcessor();
+  PluginProcessor();
+  ~PluginProcessor();
 
   void prepareToPlay(double sampleRate, int samplesPerBlock) override;
   void releaseResources() override;
@@ -284,25 +286,9 @@ public:
   void setStateInformation(const void* data, int sizeInBytes) override;
 
 private:
-  JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(EdenSynthAudioProcessor)
-
-  std::filesystem::path _assetsPath;
-  eden::EdenSynthesiser _edenSynthesiser;
-  eden_vst::EdenAdapter _edenAdapter;
-  AudioProcessorValueTreeState _pluginParameters;
+  JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(PluginProcessor)
 };
 ```
-
----
-layout: center
-class: text-center
----
-
-# What we did in the official JUCE course
-
-## "References only"
-
-<img class="mx-auto mt-8" src="./assets/JUCECourseLogo.png" width="200"/>
 
 ---
 
@@ -322,6 +308,8 @@ public:
     Parameters parameters{*this};
 };
 ```
+
+ <!-- We cannot own the parameter classes (no unique_ptr, no values) to avoid double delete -->
 
 ---
 
@@ -486,6 +474,7 @@ void PluginProcessor::setStateInformation(const void* data, int sizeInBytes) {
 }
 ```
 
+ <!-- JUCE provides `setStateInformation()` and `getStateInformation()` callbacks in the PluginProcessor to allows reading and writing plugin state (incl. parameters). -->
 <!-- serialize() hides the complexity -->
 
 ---
@@ -559,7 +548,7 @@ void JsonSerializer::serialize(const Parameters& parameters,
 
 ---
 
-# Concrete-type based parameters
+# Parameters via references only
 
 <v-clicks>
 
@@ -582,10 +571,90 @@ void JsonSerializer::serialize(const Parameters& parameters,
 
 ---
 
+# Parameters via a vector of base class pointers
+
+<div class="mt-30">
+    <img src="./assets/AudioProcessorParameterClassHierarchy.svg"/>
+</div>
+
+```cpp
+class PluginProcessor : public juce::AudioProcessor {
+    //...
+    std::vector<juce::RangedAudioParameter*> parameters;
+};
+```
+
+
+<!-- We cannot hold values, just references or pointers -->
+
+---
+
+# Parameters via a vector of base class pointers
+
+```cpp
+class JUCE_API  AudioParameterBool  : public RangedAudioParameter
+{
+public:
+    bool get() const noexcept;
+    operator bool() const noexcept;
+    //...
+};
+
+class JUCE_API RangedAudioParameter   : public AudioProcessorParameterWithID
+{
+public:
+    float convertTo0to1(float v) const noexcept;
+    float convertFrom0to1(float v) const noexcept;
+
+    // inherited:
+
+    /* Hosts will expect the value returned to be between 0 and 1.0. */
+    float getValue() const;
+
+    /* The value passed will be between 0 and 1.0. */
+    void setValue(float newValue);
+};
+```
+
+---
+
+# Parameters via a vector of base class pointers
+
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+
+<EdenSynthParameters>
+  <PARAM id="envelope.adbdr.attack.curve" value="1.0"/>
+  <PARAM id="envelope.adbdr.attack.time" value="30.0"/>
+  <PARAM id="envelope.adbdr.breakLevel" value="0.6000000238418579"/>
+  <PARAM id="envelope.adbdr.decay1.curve" value="1.0"/>
+  <PARAM id="envelope.adbdr.decay1.time" value="20.0"/>
+  <PARAM id="envelope.adbdr.decay2.curve" value="1.0"/>
+  <PARAM id="envelope.adbdr.decay2.time" value="20000.0"/>
+  <PARAM id="envelope.adbdr.release.curve" value="1.0"/>
+  <PARAM id="envelope.adbdr.release.time" value="300.0"/>
+  <PARAM id="filter.contourAmount" value="1.0"/>
+  <PARAM id="filter.cutoff" value="1.0"/>
+  <PARAM id="filter.passbandAttenuation" value="0.0"/>
+  <PARAM id="filter.resonance" value="0.0"/>
+  <PARAM id="frequencyOfA4" value="440.0"/>
+  <!-- more parameters... -->
+  <PARAM id="output.volume" value="1.0"/>
+  <PARAM id="pitchBend.semitonesDown" value="-12.0"/>
+  <PARAM id="pitchBend.semitonesUp" value="2.0"/>
+  <PARAM id="waveshaper.autoMakeUpGain" value="0.0"/>
+</EdenSynthParameters>
+```
+
+<!-- It's not interpretable, something the musicians can work with -->
+<!-- I wanted a serialization format that allows state saving as well as preset handling -->
+
+---
+
 # Summary so far
 
-1. We can treat plugin parameters as a collection of `juce::RangedAudioParameter`s (just like `juce::AudioProcessorValueTreeState`) $\implies$ We lose type information
 1. We can treat plugin parameters individually using only concrete `juce::AudioParameterFloat|Bool|Int|Choice` classes $\implies$ We cannot (easily) define operations on a collection of parameters
+1. We can treat plugin parameters as a collection of `juce::RangedAudioParameter`s $\implies$ We lose type information
 
 ---
 
@@ -1174,6 +1243,43 @@ using JuceParameterHolder = ParameterHolder<JuceParameterVisitor>;
 - https://github.com/JanWilczek/EdenSynth/tree/add-xml-presets-macos-var-params
     - *EdenSynth/SharedCode/include/presets/Preset.h*
     - *EdenSynth/SharedCode_test/source/presets_test/PresetsTest.cpp*
+
+---
+
+# Conclusion
+
+A good use of Type Erasure is to hold a collection of strongly-typed objects (that may or may not share a base class), when the types of the objects are not fixed (or we have no control over those types) and we want to perform common actions for all elements of the collection.
+
+---
+
+# Another example: `tc::any_range_ref`
+
+```cpp
+template <typename T>
+struct any_range_ref {
+    template <typename Rng>
+    any_range_ref(Rng&& rng) noexcept
+        : m_pfuncTypeErased(
+            [](tc::no_adl::any_ref anyrefRng,
+               tc::no_adl::function_ref<tc::break_or_continue (T) noexcept> fn) noexcept -> tc::break_or_continue {
+                return tc::for_each(anyrefRng.get_ref<std::remove_reference_t<Rng>>(), fn);
+            }
+        )
+        , m_anyrefRng(tc::as_lvalue(rng))
+    {}
+
+    tc::break_or_continue
+    operator()(tc::no_adl::function_ref<tc::break_or_continue (T) noexcept> fn) const& noexcept {
+        return m_pfuncTypeErased(m_anyrefRng, fn);
+    }
+
+private:
+    tc::no_adl::type_erased_function_ptr<
+        /*bNoExcept*/true, tc::break_or_continue, tc::no_adl::function_ref<tc::break_or_continue (T) noexcept>>
+            m_pfuncTypeErased;
+    tc::no_adl::any_ref m_anyrefRng;
+};
+```
 
 ---
 
