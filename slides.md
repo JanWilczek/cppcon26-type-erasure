@@ -133,16 +133,6 @@ PluginEditor --> Parameters
 @enduml
 ```
 
-<v-clicks>
-
-* Automation
-* Serialization
-* Presets (generic/custom)
-* Visualization (generic/custom)
-* UI (generic/custom)
-
-</v-clicks>
-
 ---
 
 # Example of plugin parameters in action
@@ -503,14 +493,6 @@ class PluginProcessor : public juce::AudioProcessor {
 # Parameters via a vector of base class pointers
 
 ```cpp
-class JUCE_API  AudioParameterBool  : public RangedAudioParameter
-{
-public:
-    bool get() const noexcept;
-    operator bool() const noexcept;
-    //...
-};
-
 class JUCE_API RangedAudioParameter   : public AudioProcessorParameterWithID
 {
 public:
@@ -524,6 +506,14 @@ public:
 
     /* The value passed will be between 0 and 1.0. */
     void setValue(float newValue);
+};
+
+class JUCE_API  AudioParameterBool  : public RangedAudioParameter
+{
+public:
+    bool get() const noexcept;
+    operator bool() const noexcept;
+    //...
 };
 ```
 
@@ -566,6 +556,8 @@ public:
 
 1. We can treat plugin parameters individually using only concrete `juce::AudioParameterFloat|Bool|Int|Choice` classes $\implies$ We cannot (easily) define operations on a collection of parameters
 1. We can treat plugin parameters as a collection of `juce::RangedAudioParameter`s $\implies$ We lose type information
+
+<!-- We want to have both and we cannot extend the JUCE framework -->
 
 ---
 
@@ -1053,10 +1045,33 @@ struct JuceParameterVisitor {
     - *EdenSynth/SharedCode_test/source/presets_test/PresetsTest.cpp*
 
 ---
+layout: statement
+---
 
 # Conclusion
 
-A good use of Type Erasure is to hold a collection of strongly-typed objects (that may or may not share a base class), when the types of the objects are not fixed (or we have no control over those types) and we want to perform common actions for all elements of the collection.
+A good use of Type Erasure is to hold a collection of strongly-typed objects (that may or may not share a base class), when the types of the objects are not fixed (or we have no control over those types) and we want to perform common actions for all elements of the collection
+
+---
+layout: statement
+comark: true
+---
+
+# Conclusion
+
+~~A good use of Type Erasure is to hold a collection of strongly-typed objects (that may or may not share a base class), when the types of the objects are not fixed (or we have no control over those types) and we want to perform common actions for all elements of the collection~~
+
+Use Type Erasure for polymorphic behavior without inheritance or templates
+
+<v-clicks>
+
+Use Type Erasure to physically decouple types and operations on those types
+
+$\implies$ overcome 3rd-party framework/library limitations
+
+</v-clicks>
+
+<!-- Type erasure wrappers alllow  -->
 
 ---
 
@@ -1108,10 +1123,6 @@ assert("0, 1, 2, 3, 4, 5" == (stringify_concat(std::list<int>{0, 1, 2, 3, 4, 5})
 
 ---
 
-# Another example: `edit_combobox`
-
----
-
 # References
 
 <v-clicks>
@@ -1139,9 +1150,7 @@ assert("0, 1, 2, 3, 4, 5" == (stringify_concat(std::list<int>{0, 1, 2, 3, 4, 5})
 
 1. Try out/tweak `wolfsound::ParameterHolder` from *[github.com/JanWilczek/wolfsound-dsp-utils](https://github.com/JanWilczek/wolfsound-dsp-utils)*
 
-1. Get slides at [*github.com/JanWilczek/adc26-japan-talk*](https://github.com/JanWilczek/adc26-japan-talk)
-
-1. Contact me via contact@thewolfsound.com
+1. Contact me via jwilczek_ext@think-cell.com (slides too)
 
 </v-clicks>
 <!-- If you have any questions or are interested in holding a company training, contact me at -->
