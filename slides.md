@@ -1,12 +1,12 @@
 ---
 theme: default
 colorSchema: light
-title: Type-Erased Audio Parameters
-titleTemplate: '%s - Jan Wilczek ADC Japan 2026'
+title: Using Type Erasure to Extend APIs You Don't Own
+titleTemplate: '%s - Jan Wilczek Meetup Amsterdam Sep 4 2026'
 info: |
-  ## Type-Erased Audio Parameters
+  ## Using Type Erasure to Extend APIs You Don't Own
 
-  Jan Wilczek's Audio Developer Conference Japan 2026 talk
+  Jan Wilczek's Dutch C++ Group Meetup talk
 author: Jan Wilczek
 export:
   format: pdf
