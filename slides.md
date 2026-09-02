@@ -1283,6 +1283,27 @@ private:
 
 ---
 
+# Another example: `tc::any_range_ref`
+
+```cpp
+auto stringify_concat(tc::any_range_ref<int> anyrngref) {
+	return tc::make<tc::string>(tc::join_with_separator(", ", tc::transform(anyrngref, tc_fn(tc::as_dec))));
+}
+
+assert("0, 1, 2, 3, 4, 5" == (stringify_concat(std::vector<int>{0, 1, 2, 3, 4, 5})));
+assert("0, 1, 2, 3, 4, 5" == (stringify_concat(std::list<int>{0, 1, 2, 3, 4, 5})));
+
+// TODO: vector of any_range_ref?
+```
+
+<!-- In this example, we cannot use a `span` as the argument, because `list` is not contiguous. -->
+
+---
+
+# Another example: `edit_combobox`
+
+---
+
 # References
 
 <v-clicks>
