@@ -243,7 +243,7 @@ layout: center
 
 ---
 
-<style> .slidev-layout { zoom: 70%; }</style>
+<style> .slidev-layout { zoom: 65%; }</style>
 
 # Plugin processor
 
@@ -282,6 +282,8 @@ public:
   void setStateInformation(const void* data, int sizeInBytes) override;
 
 private:
+  juce::AudioParameterFloat& gain;
+
   JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(PluginProcessor)
 };
 ```
@@ -290,18 +292,14 @@ private:
 
 # Parameters via references only
 
-```cpp {all|7-9|6,11}
+```cpp
 class PluginProcessor : public juce::AudioProcessor {
 public:
     PluginProcessor();
     //...
-    struct Parameters {
-        explicit Parameters(juce::AudioProcessor&);
-        juce::AudioParameterFloat& rate;
-        juce::AudioParameterBool& bypassed;
-        juce::AudioParameterChoice& waveform;
-    };
-    Parameters parameters{*this};
+private:
+    juce::AudioParameterFloat& gain;
+    //...
 };
 ```
 
@@ -311,80 +309,21 @@ public:
 
 # Parameters via references only
 
-<style> .slidev-layout { zoom: 60%; }</style>
-
-```cpp
+```cpp {all|13-14|2|4-6|8|7,9}
 namespace {
-auto& addParameterToProcessor(juce::AudioProcessor& processor, auto parameter) {
+juce::AudioParameterFloat& createGainParameter(juce::AudioProcessor& processor) {
+  constexpr auto versionHint = 1;
+  auto parameter = std::make_unique<juce::AudioParameterFloat>(
+          juce::ParameterID{"gain", versionHint}, "Gain",
+          juce::NormalisableRange<float>{0.f, 1.f, 0.01f}, 1.f);
   auto& result = *parameter;
   processor.addParameter(parameter.release());
   return result;
 }
-
-juce::AudioParameterFloat& createModulationRateParameter(
-    juce::AudioProcessor& processor) {
-  constexpr auto versionHint = 1;
-  return addParameterToProcessor(
-      processor,
-      std::make_unique<juce::AudioParameterFloat>(
-          juce::ParameterID{"modulation.rate", versionHint}, "Modulation rate",
-          juce::NormalisableRange<float>{0.1f, 20.f, 0.01f, 0.4f}, 5.f,
-          juce::AudioParameterFloatAttributes{}.withLabel("Hz")));
-}
-
-juce::AudioParameterBool& createBypassedParameter(
-    juce::AudioProcessor& processor) {
-  constexpr auto versionHint = 1;
-  return addParameterToProcessor(
-      processor,
-      std::make_unique<juce::AudioParameterBool>(
-          juce::ParameterID{"bypassed", versionHint}, "Bypass", false));
-}
-
-juce::AudioParameterChoice& createWaveformParameter(
-    juce::AudioProcessor& processor) {
-  constexpr auto versionHint = 1;
-  return addParameterToProcessor(
-      processor,
-      std::make_unique<juce::AudioParameterChoice>(
-          juce::ParameterID{"modulation.waveform", versionHint},
-          "Modulation waveform", juce::StringArray{"Sine", "Triangle"}, 0));
-}
 } // namespace
 
-Parameters::Parameters(juce::AudioProcessor& p)
-    : rate{createModulationRateParameter(p)},
-      bypassed{createBypassedParameter(p)},
-      waveform{createWaveformParameter(p)} {}
-```
-
----
-
-# Parameters via references only
-
-```cpp {all|21|11-16|2|3,5|4}
-namespace {
-auto& addParameterToProcessor(juce::AudioProcessor& processor, auto parameter) {
-  auto& result = *parameter;
-  processor.addParameter(parameter.release());
-  return result;
-}
-
-juce::AudioParameterFloat& createModulationRateParameter(
-    juce::AudioProcessor& processor) {
-  constexpr auto versionHint = 1;
-  return addParameterToProcessor(
-      processor,
-      std::make_unique<juce::AudioParameterFloat>(
-          juce::ParameterID{"modulation.rate", versionHint}, "Modulation rate",
-          juce::NormalisableRange<float>{0.1f, 20.f, 0.01f, 0.4f}, 5.f,
-          juce::AudioParameterFloatAttributes{}.withLabel("Hz")));
-}
-} // namespace
-
-Parameters::Parameters(juce::AudioProcessor& p)
-    : rate{createModulationRateParameter(p)},
-        /* ... */ {}
+PluginProcessor::PluginProcessor() : //...
+    gain{createGainParameter(*this)} {}
 ```
 
 <!-- Note that we must release ownership -->
@@ -399,12 +338,7 @@ Parameters::Parameters(juce::AudioProcessor& p)
 void PluginProcessor::processBlock(juce::AudioBuffer<float>& buffer,
                                    juce::MidiBuffer&) {
   //...
-  tremolo.setModulationRateHz(parameters.rate.get());
-  tremolo.setLfoWaveform(
-      static_cast<Tremolo::LfoWaveform>(parameters.waveform.getIndex()));
-  bypassTransitionSmoother.setBypass(parameters.bypassed.get());
-
-  // audio processing
+  buffer.applyGain(gain.get());
 }
 ```
 
@@ -414,7 +348,7 @@ void PluginProcessor::processBlock(juce::AudioBuffer<float>& buffer,
 
 ## Usage in UI
 
-```cpp {all|11-12|3}
+```cpp
 class PluginEditor : public juce::AudioProcessorEditor {
 public:
   explicit PluginEditor(PluginProcessor&);
@@ -422,14 +356,8 @@ public:
   void resized() override;
 
 private:
-  juce::ComboBox waveformComboBox;
-  juce::ComboBoxParameterAttachment waveformAttachment;
-
-  juce::Slider rateSlider;
-  juce::SliderParameterAttachment rateAttachment;
-
-  juce::ToggleButton bypassButton{"BYPASSED"};
-  juce::ButtonParameterAttachment bypassAttachment;
+  juce::Slider gainSlider;
+  juce::SliderParameterAttachment gainAttachment;
 };
 ```
 
@@ -442,9 +370,7 @@ private:
 ```cpp {none|1,4}
 PluginEditor::PluginEditor(PluginProcessor& p)
     : AudioProcessorEditor(&p),
-      waveformAttachment{p.parameters.waveform, waveformComboBox},
-      rateAttachment{p.parameters.rate, rateSlider},
-      bypassAttachment{p.parameters.bypassed, bypassButton} {}
+      gainAttachment{p.gain, gainButton} {}
 ```
 
 ---
@@ -456,17 +382,16 @@ PluginEditor::PluginEditor(PluginProcessor& p)
 ```cpp {none|1-4|6-14|3}
 void PluginProcessor::getStateInformation(juce::MemoryBlock& destData) {
   juce::MemoryOutputStream outputStream{destData, true};
-  JsonSerializer::serialize(parameters, outputStream);
+  JsonSerializer::serialize(gain, outputStream);
 }
 
 void PluginProcessor::setStateInformation(const void* data, int sizeInBytes) {
   juce::MemoryInputStream inputStream{data, static_cast<size_t>(sizeInBytes),
                                       false};
-  const auto result = JsonSerializer::deserialize(inputStream, parameters);
+  const auto result = JsonSerializer::deserialize(inputStream, gain);
   if (result.failed()) {
     // notify the user
   }
-  // optionally skip smoothing
 }
 ```
 
