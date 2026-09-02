@@ -887,136 +887,34 @@ private:
 std::vector<TypeErasedParameter> parameters;
 ```
 
----
-
-# Collection of `TypeErasedParameter`s
-
-<style> .slidev-layout { zoom: 60%; }</style>
-
-```cpp {all|2-29|42|42,32-33|42,35-39|all}
-class ParameterHolder {
-  class TypeErasedParameter {
-  public:
-    template <class Parameter>
-    explicit TypeErasedParameter(Parameter& p)
-        : _impl{std::make_unique<ParameterModel<Parameter>>(p)} {}
-
-    void accept(Visitor& v) { _impl->accept(v); }
-
-  private:
-    class ParameterConcept {  // NOLINT
-    public:
-      virtual ~ParameterConcept() = default;
-      virtual void accept(Visitor& v) = 0;
-    };
-
-    template <class Parameter>
-    class ParameterModel : public ParameterConcept {
-    public:
-      explicit ParameterModel(Parameter& p) : _p{p} {}
-
-      void accept(Visitor& v) override { v.visit(_p.get()); }
-
-    private:
-      Parameter& _p;
-    };
-
-    std::unique_ptr<ParameterConcept> _impl;
-  };
-
-public:
-  explicit ParameterHolder(std::vector<TypeErasedParameter> parameters)
-      : _parameters{std::move(parameters)} {}
-
-  void accept(Visitor& v) {
-    for (auto& parameter : _parameters) {
-      parameter.accept(v);
-    }
-  }
-
-private:
-  std::vector<TypeErasedParameter> _parameters;
-};
-```
-
-<!-- But since we've already done all this work, why not add a Builder that helps in instantiating the ParameterHolder? -->
+<!-- But since we've already done all this work, why not add a Builder that helps in instantiating the vector? -->
 
 ---
 
 # Builder
 
 ```cpp {all|20|21|3-4|5|6|7,21|9|8,20|12-17|13-15,20|16,21|12|all}
-class Builder {
+class ParameterBuilder {
 public:
     template <class P, class... Args>
     P& add(Args&&... args) {
         auto parameter = std::make_unique<P>(std::forward<Args>(args)...);
         auto& ref = *parameter;
-        _parametersForHolder.emplace_back(ref);
+        _parameterReferences.emplace_back(ref);
         _parameters.push_back(std::move(parameter));
         return ref;
     }
 
-    ParameterHolder build(juce::AudioProcessor& p) && {
+    std::vector<TypeErasedParameter> build(juce::AudioProcessor& p) && {
         for (auto&& parameter : _parameters) {
             p.addParameter(parameter.release());
         }
-        return ParameterHolder{std::move(_parametersForHolder)};
+        return std::move(_parameterReferences);
     }
 
 private:
     std::vector<std::unique_ptr<juce::AudioProcessorParameter>> _parameters;
-    std::vector<TypeErasedParameter> _parametersForHolder;
-};
-```
-
----
-
-# Builder
-
-<style> .slidev-layout { zoom: 60%; }</style>
-
-```cpp {11-32|36-38}
-class ParameterHolder {
-  class TypeErasedParameter {
-  public:
-    template <class Parameter>
-    explicit TypeErasedParameter(Parameter& p)
-        : _impl{std::make_unique<ParameterModel<Parameter>>(p)} {}
-        //...
-  };
-
-public:
-  class Builder {
-  public:
-    template <class P, class... Args>
-    P& add(Args&&... args) {
-      auto parameter = std::make_unique<P>(std::forward<Args>(args)...);
-      auto& ref = *parameter;
-      _parametersForHolder.emplace_back(ref);
-      _parameters.push_back(std::move(parameter));
-      return ref;
-    }
-
-    ParameterHolder build(juce::AudioProcessor& p) && {
-      for (auto&& parameter : _parameters) {
-        p.addParameter(parameter.release());
-      }
-      return ParameterHolder{std::move(_parametersForHolder)};
-    }
-
-  private:
-    std::vector<std::unique_ptr<juce::AudioProcessorParameter>> _parameters;
-    std::vector<TypeErasedParameter> _parametersForHolder;
-  };
-
-  void accept(Visitor& v) {/* ... */}
-
-private:
-  explicit ParameterHolder(std::vector<TypeErasedParameter> parameters)
-      : _parameters{std::move(parameters)} {}
-
-  std::vector<TypeErasedParameter> _parameters;
+    std::vector<TypeErasedParameter> _parameterReferences;
 };
 ```
 
@@ -1028,7 +926,7 @@ private:
 class PluginProcessor : public juce::AudioProcessor {
 public:
   explicit PluginProcessor(
-      ParameterHolder::Builder builder = {})
+      ParameterBuilder builder = {})
       : floatParam{builder.add<juce::AudioParameterFloat>(
             "floatParam", "Float Param", juce::NormalisableRange{1.f, 10.f}, 5.f)},
         boolParam{builder.add<juce::AudioParameterBool>(
@@ -1037,7 +935,7 @@ public:
             "intParam", "Int Param", 5, 10, 6)},
         choiceParam{builder.add<juce::AudioParameterChoice>(
             "choiceParam", "Choice Param", juce::StringArray{"choice 0", "choice 1", "choice 2"}, 1)},
-        parameterHolder{std::move(builder).build(*this)} {}
+        parameters{std::move(builder).build(*this)} {}
 
   //...
 private:
@@ -1045,7 +943,7 @@ private:
   juce::AudioParameterBool& boolParam;
   juce::AudioParameterInt& intParam;
   juce::AudioParameterChoice& choiceParam;
-  ParameterHolder parameterHolder;
+  std::vector<TypeErasedParameter> parameterHolder;
 };
 ```
 
@@ -1089,9 +987,11 @@ private:
 # Serialization using a Visitor
 
 ```cpp
-std::vector<ParameterIdAndValue> parameterIdsAndValues(ParameterHolder& ph) {
+std::vector<ParameterIdAndValue> parameterIdsAndValues(std::vector<TypeErasedParameter> const& parameters) {
   ParameterValuesExtractor visitor;
-  ph.accept(visitor);
+  for (auto const& parameter : parameters) {
+    ph.accept(visitor);
+  }
   return visitor.result();
 }
 ```
@@ -1104,7 +1004,7 @@ class: "!text-black"
 
 <div>
 
-$\implies$ make `ParameterHolder` templated on the `Visitor` class.
+$\implies$ make `TypeErasedParameter` templated on the `Visitor` class.
 
 </div>
 
@@ -1114,8 +1014,7 @@ $\implies$ make `ParameterHolder` templated on the `Visitor` class.
 
 ```cpp
 template <class Visitor>
-class ParameterHolder {
-  //...
+class TypeErasedParameter {
 public:
   void accept(Visitor& v) {/* ... */}
   //...
@@ -1136,20 +1035,18 @@ struct JuceParameterVisitor {
   virtual void visit(juce::AudioParameterInt&) = 0;
   virtual void visit(juce::AudioParameterChoice&) = 0;
 };
-
-using JuceParameterHolder = ParameterHolder<JuceParameterVisitor>;
 ```
 
 ---
 
 # Implementations
 
-## `ParameterHolder` with example serialization
+## `TypeErasedParameter` with example serialization
 
 - https://github.com/JanWilczek/wolfsound-dsp-utils
     - *src/include/wolfsound/juce/wolfsound_ParameterHolder.hpp*
 
-## `ParameterHolder` with serialization and presets (WIP)
+## `TypeErasedParameter` with serialization and presets (WIP)
 
 - https://github.com/JanWilczek/EdenSynth/tree/add-xml-presets-macos-var-params
     - *EdenSynth/SharedCode/include/presets/Preset.h*
