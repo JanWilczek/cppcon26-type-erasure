@@ -120,49 +120,6 @@ layout: cover
 
 ---
 
-# Gain parameter example
-
-<img src="./assets/gain.jpeg" class="h-85"/>
-
- <!-- As an example, let's consider a plugin's volume, also called the gain. It can be represented as a floating-point value in the [0, 1] range that scales the plugin's output. 1 means no change in volume, and 0 means complete silence. Let's take a look at the requirements of such a parameter: -->
-
----
-
-# Gain parameter requirements
-
-<v-clicks>
-
-- it controls the volume of the sound output by the plugin
-- it must be displayed in the UI
-- it must be reported to the host to meet its requirements (requirement of plugin APIs)
-- it can be adjusted by the user via a slider in the plugin's UI
-- it can be adjusted by the user in host's automation view
-- it must be persisted between DAW project reloads
-- it should be easy to serialize for user presets
-- it's access must be real-time-safe (read/written on the audio thread, updated on the UI thread)
-
-</v-clicks>
-
----
-
-# Recap
-
-<v-clicks>
-
-- **audio plugin**: a plugin for a digital audio workstation (DAW)
-- **plugin processor**: the core of an audio plugin; responsible for plugin metadata, audio processing, and state management
-- **plugin editor**: user interface (UI) of the plugin
-- **plugin parameter**: a user-controllable value influencing audio processing of a plugin
-    - `juce::AudioParameterFloat|Bool|Int|Choice` class instance in JUCE plugins
-- **UI state**: non-audio-related state
-- **serialization**: process of externalizing state (for example, to a JSON file)
-- **deserialization**: process of loading state from an external source (for example, a JSON file)
-- **preset** = plugin parameter values + metadata
-
-</v-clicks>
-
----
-
 # Parameters in audio plugins
 
 ```plantuml
@@ -202,6 +159,51 @@ PluginEditor --> Parameters
     <img v-click src="./assets/ReaperPresets.png" class="absolute left-[40%] bottom-0 h-48 rounded shadow-xl" />
   </div>
 </div>
+
+---
+
+# Gain parameter example
+
+<img src="./assets/gain.jpeg" class="h-85"/>
+
+ <!-- As an example, let's consider a plugin's volume, also called the gain. It can be represented as a floating-point value in the [0, 1] range that scales the plugin's output. 1 means no change in volume, and 0 means complete silence. Let's take a look at the requirements of such a parameter: -->
+
+---
+hide: true
+---
+
+# Gain parameter requirements
+
+<v-clicks>
+
+- it controls the volume of the sound output by the plugin
+- it must be displayed in the UI
+- it must be reported to the host to meet its requirements (requirement of plugin APIs)
+- it can be adjusted by the user via a slider in the plugin's UI
+- it can be adjusted by the user in host's automation view
+- it must be persisted between DAW project reloads
+- it should be easy to serialize for user presets
+- it's access must be real-time-safe (read/written on the audio thread, updated on the UI thread)
+
+</v-clicks>
+
+---
+
+# Recap
+
+<v-clicks>
+
+- **audio plugin**: a plugin for a digital audio workstation (DAW)
+- **plugin processor**: the core of an audio plugin; responsible for plugin metadata, audio processing, and state management
+- **plugin editor**: user interface (UI) of the plugin
+- **plugin parameter**: a user-controllable value influencing audio processing of a plugin
+    - `juce::AudioParameterFloat|Bool|Int|Choice` class instance in JUCE plugins
+- **UI state**: non-audio-related state
+- **serialization**: process of externalizing state (for example, to a JSON file)
+- **deserialization**: process of loading state from an external source (for example, a JSON file)
+- **preset** = plugin parameter values + metadata
+
+</v-clicks>
 
 ---
 
