@@ -367,7 +367,7 @@ private:
 
 ## Usage in UI
 
-```cpp {none|1,4}
+```cpp
 PluginEditor::PluginEditor(PluginProcessor& p)
     : AudioProcessorEditor(&p),
       gainAttachment{p.gain, gainButton} {}
@@ -406,11 +406,9 @@ void PluginProcessor::setStateInformation(const void* data, int sizeInBytes) {
 
 <style> .slidev-layout { zoom: 80%; }</style>
 
-```cpp {all|2-4,24-25}
+```cpp {all|2,22}
 struct SerializableParameters {
-  float rate;
-  bool bypassed;
-  juce::String waveform;
+  float gain;
 
   static constexpr auto marshallingVersion = 1;
 
@@ -422,16 +420,15 @@ struct SerializableParameters {
       return;
     }
 
-    std::string pluginName = TREMOLO_PLUGIN_NAME;
+    std::string pluginName = "GAIN_PLUGIN";
 
     archive(named("pluginName", pluginName));
 
-    if (pluginName != TREMOLO_PLUGIN_NAME) {
+    if (pluginName != "GAIN_PLUGIN") {
       return;
     }
 
-    archive(named("modulationRateHz", p.rate), named("bypassed", p.bypassed),
-            named("modulationWaveform", p.waveform));
+    archive(named(gain.getParameterID(), gain.get()));
   }
 };
 ```
@@ -441,18 +438,10 @@ struct SerializableParameters {
 ---
 
 
-```cpp {9-10|1-7,11|17-20}
-SerializableParameters from(const Parameters& p) {
-  return {
-      .rate = p.rate.get(),
-      .bypassed = p.bypassed.get(),
-      .waveform = p.waveform.getCurrentChoiceName(),
-  };
-}
-
-void JsonSerializer::serialize(const Parameters& parameters,
+```cpp {1-2|3|9-12}
+void JsonSerializer::serialize(const juce::AudioParameterFloat& gain,
                                juce::OutputStream& output) {
-  const auto json = juce::ToVar::convert(from(parameters));
+  const auto json = juce::ToVar::convert(SerializableParameters{ gain });
 
   if (!json.has_value()) {
     return;
@@ -478,6 +467,7 @@ void JsonSerializer::serialize(const Parameters& parameters,
 - Full type safety
 - Easy access to singular parameters
     - `processBlock()`
+    - `PluginEditor`
 - We can use any serialization format we like
 - Serialization code can be reused for presets
 - Easy UI attachments
@@ -541,7 +531,7 @@ public:
 
 # Parameters via a vector of base class pointers
 
-```xml
+```xml {all|4,7,9,15,22}
 <?xml version="1.0" encoding="UTF-8"?>
 
 <EdenSynthParameters>
