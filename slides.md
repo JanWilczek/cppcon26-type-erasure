@@ -47,8 +47,8 @@ Amsterdam, September 4th, 2026
 <v-clicks>
 
 - Jan Wilczek \[Yan Vil-check\]
-- C++ Speaker at think-cell
 - Founder of TheWolfSound.com & online course creator
+- C++ Speaker at think-cell
 
 </v-clicks>
 
@@ -79,12 +79,6 @@ layout: cover
 <img src="./assets/ableton-live.png" class="h-120 w-auto"/>
 
 <!-- - Here's how a modern DAW looks like tracks, transport, assets, and... plugins -->
----
-
-# Audio plugins
-
-<img src="./assets/Many_plugin_hosts_with_many_plugins.png" class="h-100"/>
-
 <!-- - Plugins extend DAW capabilities: think sound synthesizers, and audio effects such as reverb -->
 
 ---
