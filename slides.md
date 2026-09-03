@@ -1185,40 +1185,16 @@ assert("0, 1, 2, 3, 4, 5" == (stringify_concat(std::list<int>{0, 1, 2, 3, 4, 5})
 <!-- In this example, we cannot use a `span` as the argument, because `list` is not contiguous. -->
 
 ---
-
-# Implementations
-
-## `TypeErasedParameter` with example serialization
-
-- https://github.com/JanWilczek/wolfsound-dsp-utils
-    - *src/include/wolfsound/juce/wolfsound_ParameterHolder.hpp*
-
-## `TypeErasedParameter` with serialization and presets (WIP)
-
-- https://github.com/JanWilczek/EdenSynth/tree/add-xml-presets-macos-var-params
-    - *EdenSynth/SharedCode/include/presets/Preset.h*
-    - *EdenSynth/SharedCode_test/source/presets_test/PresetsTest.cpp*
-
----
 layout: statement
 ---
 
 # Conclusion
-
-A good use of Type Erasure is to hold a collection of strongly-typed objects (that may or may not share a base class), when the types of the objects are not fixed (or we have no control over those types) and we want to perform common actions for all elements of the collection
-
----
-layout: statement
-comark: true
----
-
-# Conclusion
-
-~~A good use of Type Erasure is to hold a collection of strongly-typed objects (that may or may not share a base class), when the types of the objects are not fixed (or we have no control over those types) and we want to perform common actions for all elements of the collection~~
-
-Use Type Erasure for polymorphic behavior without inheritance or templates
 
 <v-clicks>
+
+A good use of Type Erasure is to manage a collection of strongly-typed objects (that may or may not share a base class), when the types of the objects are not fixed in advance (or we have no control over those types) and we want to perform common actions for all elements of the collection
+
+$\equiv$ Use Type Erasure for polymorphic behavior without inheritance or templates
 
 Use Type Erasure to physically decouple types and operations on those types
 
@@ -1234,6 +1210,10 @@ $\implies$ overcome 3rd-party framework/library limitations
 
 <v-clicks>
 
+
+1. `TypeErasedParameter` with example serialization,  https://github.com/JanWilczek/wolfsound-dsp-utils
+    - *src/include/wolfsound/juce/wolfsound_ParameterHolder.hpp*
+1. think-cell library
 1. JUCE C++ framework source code, *https://github.com/juce-framework/JUCE*
 1. Kevlin Henney, *Valued Conversions*, *C++ Report* July-August 2000
 1. Sean Parent, *Inheritance Is the Base Class of Evil*, GoingNative 2013
@@ -1248,17 +1228,11 @@ $\implies$ overcome 3rd-party framework/library limitations
 
 # Summary
 
-<v-clicks>
-
-1. General: Use the Type Erasure design pattern together with the Visitor design pattern to manage collections of strongly typed objects of different classes
-
-1. Specific: Use Type Erasure to perform operations on all parameter objects of your plugin without losing their type
-    - Keep references to concrete parameter objects to access them individually
-
-1. Try out/tweak `wolfsound::ParameterHolder` from *[github.com/JanWilczek/wolfsound-dsp-utils](https://github.com/JanWilczek/wolfsound-dsp-utils)*
-
+1. A good use of Type Erasure is to manage a collection of strongly-typed objects (that may or may not share a base class), when the types of the objects are not fixed in advance (or we have no control over those types) and we want to perform common actions for all elements of the collection
+    1. $\equiv$ Use Type Erasure for polymorphic behavior without inheritance or templates
+1. Use Type Erasure to physically decouple types and operations on those types
+    1. $\implies$ overcome 3rd-party framework/library limitations
 1. Contact me via jwilczek_ext@think-cell.com (slides too)
 
-</v-clicks>
-<!-- If you have any questions or are interested in holding a company training, contact me at -->
+<!-- If you have any questions or want to access slides contact me at -->
 
