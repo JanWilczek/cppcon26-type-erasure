@@ -148,7 +148,7 @@ PluginEditor --> Parameters
 
 # Gain parameter example
 
-<img src="./assets/gain.jpeg" class="h-85"/>
+<img src="./assets/gain_parameter_example.svg" class="h-85"/>
 
  <!-- As an example, let's consider a plugin's volume, also called the gain. It can be represented as a floating-point value in the [0, 1] range that scales the plugin's output. 1 means no change in volume, and 0 means complete silence. Let's take a look at the requirements of such a parameter: -->
 
