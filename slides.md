@@ -557,14 +557,14 @@ public:
 1. We can treat plugin parameters individually using only concrete `juce::AudioParameterFloat|Bool|Int|Choice` classes $\implies$ We cannot (easily) define operations on a collection of parameters
 1. We can treat plugin parameters as a collection of `juce::RangedAudioParameter`s $\implies$ We lose type information
 
-<!-- We want to have both and we cannot extend the JUCE framework -->
-
 ---
 
 # Summary so far
 
 1. Parameter collection: extensibility
 1. Individual parameters: interpretability
+
+<!-- We want to have both and we cannot extend the JUCE framework; it's a limitation of the framework -->
 
 ---
 layout: center
@@ -1031,47 +1031,110 @@ struct JuceParameterVisitor {
 
 ---
 
-# Implementations
+# What if we want to support custom parameter classes?
 
-## `TypeErasedParameter` with example serialization
+## Free functions alternative
 
-- https://github.com/JanWilczek/wolfsound-dsp-utils
-    - *src/include/wolfsound/juce/wolfsound_ParameterHolder.hpp*
+```cpp
+struct ParameterIdAndValue {
+  std::string id;
+  std::variant<float, int, bool, std::string> value;
+};
+//...
+void serialize(ParameterIdAndValue& idAndValue, juce::AudioParameterFloat& p) {
+    idAndValue.id = p.getParameterID().toStdString();
+    idAndValue.value = p.get();
+}
 
-## `TypeErasedParameter` with serialization and presets (WIP)
+void serialize(juce::OutputStream&, juce::AudioParameterChoice& p) {
+    idAndValue.id = p.getParameterID().toStdString();
+    idAndValue.value = p.getCurrentChoiceName();
+}
+//...
+class TypeErasedParameter {
+public:
+    //...
+    void serialize(ParameterIdAndValue& idAndValue) { _impl->serialize(idAndValue); }
+private:
+    class ParameterConcept {
+    public:
+        virtual ~ParameterConcept() = default;
+        virtual void serialize(ParameterIdAndValue&) = 0;
+    };
+    template <class Parameter>
+    class ParameterModel : public ParameterConcept {
+    public:
+        //...
+        void serialize(ParameterIdAndValue& idAndValue) override { serialize(idAndValue, _p); }
 
-- https://github.com/JanWilczek/EdenSynth/tree/add-xml-presets-macos-var-params
-    - *EdenSynth/SharedCode/include/presets/Preset.h*
-    - *EdenSynth/SharedCode_test/source/presets_test/PresetsTest.cpp*
+    private:
+        Parameter& _p;
+    };
+    std::unique_ptr<ParameterConcept> _impl;
+};
+
+std::vector<ParameterIdAndValue> serializeParameters(std::vector<TypeErasedParameter> const& parameters) {
+     std::vector<ParameterIdAndValue> result;
+    for (TypeErasedParameter const& p : parameters) {
+        ParameterIdAndValue idAndValue;
+        p.serialize(idAndValue);
+        result.push_back(idAndValue);
+    }
+    return result;
+}
+```
+
+<!-- `TypeErasedParameter` and `seralizeParameters()` don't depend on any JUCE class anymore! -->
 
 ---
-layout: statement
+
+# Classic Type Erasure: `std::function`
+
+```cpp
+#include <functional>
+#include <print>
+
+int invoke(std::function<int(int)> f) {
+    return f(31);
+}
+
+namespace {
+int g_n = 42;
+}
+
+int addGlobal(int n) {
+    return g_n + n;
+}
+
+int main() {
+    std::println("{}", invoke(addGlobal));
+    std::println("{}", invoke([data = 42](int n) { return n + data; }));
+
+    struct Functor {
+        int m_n;
+
+        int operator()(int n) {
+            return m_n + n;
+        }
+
+    };
+    std::println("{}", invoke(Functor{42}));
+}
+```
+
 ---
 
-# Conclusion
+# C++ 26-style function wrapper
 
-A good use of Type Erasure is to hold a collection of strongly-typed objects (that may or may not share a base class), when the types of the objects are not fixed (or we have no control over those types) and we want to perform common actions for all elements of the collection
+- `std::copyable_function`
+- `std::move_only_function`
+- `std::function_ref`
 
----
-layout: statement
-comark: true
----
+<v-click>
+TODO: Link to tc::function_ref
+</v-click>
 
-# Conclusion
-
-~~A good use of Type Erasure is to hold a collection of strongly-typed objects (that may or may not share a base class), when the types of the objects are not fixed (or we have no control over those types) and we want to perform common actions for all elements of the collection~~
-
-Use Type Erasure for polymorphic behavior without inheritance or templates
-
-<v-clicks>
-
-Use Type Erasure to physically decouple types and operations on those types
-
-$\implies$ overcome 3rd-party framework/library limitations
-
-</v-clicks>
-
-<!-- Type erasure wrappers alllow  -->
+<!-- Also available in the think-cell library if your compiler doesn't yet support it. And speaking of the think-cell library... -->
 
 ---
 
@@ -1120,6 +1183,50 @@ assert("0, 1, 2, 3, 4, 5" == (stringify_concat(std::list<int>{0, 1, 2, 3, 4, 5})
 ```
 
 <!-- In this example, we cannot use a `span` as the argument, because `list` is not contiguous. -->
+
+---
+
+# Implementations
+
+## `TypeErasedParameter` with example serialization
+
+- https://github.com/JanWilczek/wolfsound-dsp-utils
+    - *src/include/wolfsound/juce/wolfsound_ParameterHolder.hpp*
+
+## `TypeErasedParameter` with serialization and presets (WIP)
+
+- https://github.com/JanWilczek/EdenSynth/tree/add-xml-presets-macos-var-params
+    - *EdenSynth/SharedCode/include/presets/Preset.h*
+    - *EdenSynth/SharedCode_test/source/presets_test/PresetsTest.cpp*
+
+---
+layout: statement
+---
+
+# Conclusion
+
+A good use of Type Erasure is to hold a collection of strongly-typed objects (that may or may not share a base class), when the types of the objects are not fixed (or we have no control over those types) and we want to perform common actions for all elements of the collection
+
+---
+layout: statement
+comark: true
+---
+
+# Conclusion
+
+~~A good use of Type Erasure is to hold a collection of strongly-typed objects (that may or may not share a base class), when the types of the objects are not fixed (or we have no control over those types) and we want to perform common actions for all elements of the collection~~
+
+Use Type Erasure for polymorphic behavior without inheritance or templates
+
+<v-clicks>
+
+Use Type Erasure to physically decouple types and operations on those types
+
+$\implies$ overcome 3rd-party framework/library limitations
+
+</v-clicks>
+
+<!-- Type erasure wrappers alllow physically decoupling a class from its behavior/interface. They can be in separate translation units and don't have to be templates. Allow avoiding function templates, which may be desired if you want to add virtual functions that cannot be templates -->
 
 ---
 
