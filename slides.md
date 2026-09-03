@@ -1109,9 +1109,6 @@ std::vector<ParameterIdAndValue> serializeParameters(std::vector<TypeErasedParam
 # Classic Type Erasure: `std::function`
 
 ```cpp
-#include <functional>
-#include <print>
-
 int invoke(std::function<int(int)> f) {
     return f(31);
 }
@@ -1130,11 +1127,9 @@ int main() {
 
     struct Functor {
         int m_n;
-
         int operator()(int n) {
             return m_n + n;
         }
-
     };
     std::println("{}", invoke(Functor{42}));
 }
@@ -1202,20 +1197,15 @@ assert("0, 1, 2, 3, 4, 5" == (stringify_concat(std::list<int>{0, 1, 2, 3, 4, 5})
 <!-- In this example, we cannot use a `span` as the argument, because `list` is not contiguous. -->
 
 ---
-layout: statement
----
 
 # Conclusion
 
 <v-clicks>
 
-A good use of Type Erasure is to manage a collection of strongly-typed objects (that may or may not share a base class), when the types of the objects are not fixed in advance (or we have no control over those types) and we want to perform common actions for all elements of the collection
-
-$\equiv$ Use Type Erasure for polymorphic behavior without inheritance or templates
-
-Use Type Erasure to physically decouple types and operations on those types
-
-$\implies$ overcome 3rd-party framework/library limitations
+* A good use of Type Erasure is to manage a collection of strongly-typed objects (that may or may not share a base class), when the types of the objects are not fixed in advance (or we have no control over those types) and we want to perform common actions for all elements of the collection
+* $\equiv$ Use Type Erasure for polymorphic behavior without inheritance or templates
+* Use Type Erasure to physically decouple types and operations on those types
+* $\implies$ overcome 3rd-party framework/library limitations
 
 </v-clicks>
 
