@@ -1105,19 +1105,18 @@ The only requirement for type `T` contained in `TypeErasedParameter` is the pres
 
 # Classic Type Erasure: `std::function`
 
-```cpp {all|1-3|5-11,14|15-16|18-24}
+https://godbolt.org/z/ah1MK787T
+
+```cpp {all|1-3|4-9,11|12-13|15-21}
 int invoke(std::function<int(int)> f) {
     return f(31);
 }
-
 namespace {
 int g_n = 42;
 }
-
 int addGlobal(int n) {
     return g_n + n;
 }
-
 int main() {
     std::println("{}", invoke(addGlobal));
     auto data = 42;
@@ -1133,17 +1132,22 @@ int main() {
 }
 ```
 
+<!-- std::function works with all possible function-like inputs, including functions referencing global data, local data, lambdas, and functors. -->
+
 ---
 
-# C++ 26-style function wrapper
+# C++ function wrappers
 
-- `std::copyable_function`
-- `std::move_only_function`
-- `std::function_ref`
+- `std::function` (C++ 11)
+- `std::move_only_function` (C++ 23)
+- `std::copyable_function` (C++ 26)
+- `std::function_ref` (C++ 26)
 
 <v-click>
+
 `tc::function_ref`:
 https://github.com/think-cell/think-cell-library/blob/main/tc/base/ref.h#L113
+
 </v-click>
 
 <!-- Also available in the think-cell library if your compiler doesn't yet support it (MSVC and AppleClang still don't). And speaking of the think-cell library... -->
