@@ -1142,11 +1142,11 @@ int main() {
 - `std::function_ref`
 
 <v-click>
-TODO: Link to tc::function_ref
-https://github.com/think-cell/think-cell-library
+`tc::function_ref`:
+https://github.com/think-cell/think-cell-library/blob/main/tc/base/ref.h#L113
 </v-click>
 
-<!-- Also available in the think-cell library if your compiler doesn't yet support it. And speaking of the think-cell library... -->
+<!-- Also available in the think-cell library if your compiler doesn't yet support it (MSVC and AppleClang still don't). And speaking of the think-cell library... -->
 
 ---
 
@@ -1201,7 +1201,7 @@ assert("0, 1, 2, 3, 4, 5" == (stringify_concat(std::list<int>{0, 1, 2, 3, 4, 5})
 <v-clicks>
 
 * A good use of Type Erasure is to manage a collection of strongly-typed objects (that may or may not share a base class), when the types of the objects are not fixed in advance (or we have no control over those types) and we want to perform common actions for all elements of the collection
-* $\equiv$ Use Type Erasure for polymorphic behavior without inheritance or templates
+* $\Leftrightarrow$ Use Type Erasure for polymorphic behavior without inheritance or templates
 * Use Type Erasure to physically decouple types and operations on those types
 * $\implies$ overcome 3rd-party framework/library limitations
 
@@ -1218,12 +1218,14 @@ assert("0, 1, 2, 3, 4, 5" == (stringify_concat(std::list<int>{0, 1, 2, 3, 4, 5})
 
 1. `TypeErasedParameter` with example serialization,  https://github.com/JanWilczek/wolfsound-dsp-utils
     - *src/include/wolfsound/juce/wolfsound_ParameterHolder.hpp*
-1. think-cell library
+1. think-cell library: https://github.com/think-cell/think-cell-library
+    - `tc::function_ref`, `tc::any_range_ref`: *tc/base/ref.h*
 1. JUCE C++ framework source code, *https://github.com/juce-framework/JUCE*
 1. Kevlin Henney, *Valued Conversions*, *C++ Report* July-August 2000
 1. Sean Parent, *Inheritance Is the Base Class of Evil*, GoingNative 2013
 1. Klaus Iglberger, *C++ Software Design: Design Principles and Patterns for High-Quality Software*, O'Reilly 2022
 1. Jan Wilczek & the JUCE team, *Official JUCE Audio Plugin Development Online Course*, [*https://wolfsoundacademy.com/juce*](https://wolfsoundacademy.com/juce) (available for free)
+1. Jan Wilczek, TheWolfSound.com
 1. Thanks to Daniel Lunow and Valentin Ziegler for helping me prepare this talk.
 
 </v-clicks>
@@ -1235,7 +1237,7 @@ assert("0, 1, 2, 3, 4, 5" == (stringify_concat(std::list<int>{0, 1, 2, 3, 4, 5})
 # Summary
 
 1. A good use of Type Erasure is to manage a collection of strongly-typed objects (that may or may not share a base class), when the types of the objects are not fixed in advance (or we have no control over those types) and we want to perform common actions for all elements of the collection
-    * $\equiv$ Use Type Erasure for polymorphic behavior without inheritance or templates
+    * $\Leftrightarrow$ Use Type Erasure for polymorphic behavior without inheritance or templates
 1. Use Type Erasure to physically decouple types and operations on those types
     * $\implies$ overcome 3rd-party framework/library limitations
 1. Check out our library at https://github.com/think-cell/think-cell-library    
