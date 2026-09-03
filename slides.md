@@ -479,13 +479,13 @@ class PluginProcessor : public juce::AudioProcessor {
 ```
 
 
-<!-- We cannot hold values, just references or pointers -->
+<!-- We cannot hold values, just references or pointers. JUCE AudioProcessorValueTreeState -->
 
 ---
 
 # Parameters via a vector of base class pointers
 
-```cpp
+```cpp {all|10|5|19-20}
 class JUCE_API RangedAudioParameter   : public AudioProcessorParameterWithID
 {
 public:
