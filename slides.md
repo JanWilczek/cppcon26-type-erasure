@@ -78,8 +78,7 @@ layout: cover
 
 <img src="./assets/ableton-live.png" class="h-120 w-auto"/>
 
-<!-- - Here's how a modern DAW looks like tracks, transport, assets, and... plugins -->
-<!-- - Plugins extend DAW capabilities: think sound synthesizers, and audio effects such as reverb -->
+<!-- - Here's how a modern DAW looks like tracks, transport, assets, and... plugins. Plugins extend DAW capabilities: think sound synthesizers, and audio effects such as reverb -->
 
 ---
 
@@ -103,11 +102,7 @@ layout: cover
 
 <img src="./assets/JUCE_is_the_magical_tool.png" class="h-75 w-auto"/>
 
-<!-- The JUCE C++ framework allows having a single codebase to generate wrappers for most of the mainstream plugin formats -->
-
- <!-- It also allows general-purpose cross-platform app creation (think Qt) -->
-
- <!-- But today, we're not talking about audio processing algorithms, but about state management in audio plugins, in particular, audio parameters. -->
+<!-- The JUCE C++ framework allows having a single codebase to generate wrappers for most of the mainstream plugin formats. It also allows general-purpose cross-platform app creation (think Qt). But today, we're not talking about audio processing algorithms, but about state management in audio plugins, in particular, audio parameters. -->
 
 ---
 
@@ -115,8 +110,7 @@ layout: cover
 
 <img src="./assets/Processor-Editor_split.png" />
 
- <!-- Plugins, in particular plugins created with JUCE, consist of two main classes: processor and editor. Think editor=UI and processor=audio processing, host communication, state management, and everything else. -->
- <!-- Part of the plugin's state are parameters; user-adjustable, UI-displayable, audio-controlling values. -->
+ <!-- Plugins, in particular plugins created with JUCE, consist of two main classes: processor and editor. Think editor=UI and processor=audio processing, host communication, state management, and everything else. Part of the plugin's state are parameters; user-adjustable, UI-displayable, audio-controlling values. -->
 
 ---
 
@@ -385,8 +379,7 @@ void PluginProcessor::setStateInformation(const void* data, int sizeInBytes) {
 }
 ```
 
- <!-- JUCE provides `setStateInformation()` and `getStateInformation()` callbacks in the PluginProcessor to allows reading and writing plugin state (incl. parameters). -->
-<!-- serialize() hides the complexity -->
+ <!-- JUCE provides `setStateInformation()` and `getStateInformation()` callbacks in the PluginProcessor to allows reading and writing plugin state (incl. parameters). serialize() hides the complexity -->
 
 ---
 
@@ -547,8 +540,7 @@ public:
 </EdenSynthParameters>
 ```
 
-<!-- It's not interpretable, something the musicians can work with -->
-<!-- I wanted a serialization format that allows state saving as well as preset handling -->
+<!-- It's not interpretable, something the musicians can work with. I wanted a serialization format that allows state saving as well as preset handling -->
 
 ---
 
@@ -939,8 +931,7 @@ private:
 };
 ```
 
-<!-- So you can still access individual parameters, but now you can also perform operations on all of them easily (maintaining type safety) -->
-<!-- Once we have all this in place, adding serialization is a breeze. -->
+<!-- So you can still access individual parameters, but now you can also perform operations on all of them easily (maintaining type safety). Once we have all this in place, adding serialization is a breeze. -->
 
 ---
 
