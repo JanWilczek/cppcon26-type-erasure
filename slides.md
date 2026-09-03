@@ -713,8 +713,8 @@ std::vector<TypeErasedParameter> parameters;
 
 ````md magic-move
 ```cpp {1-3|all}
-void foo(juce::AudioParameterFloat& p);
-void foo(juce::AudioParameterBool& p);
+ReturnType foo(juce::AudioParameterFloat& p);
+ReturnType foo(juce::AudioParameterBool& p);
 //...
 class TypeErasedParameter {
 public:
@@ -738,24 +738,24 @@ private:
 };
 ```
 ```cpp {all|1-3,7,12,18}
-void foo(juce::AudioParameterFloat& p);
-void foo(juce::AudioParameterBool& p);
+ReturnType foo(juce::AudioParameterFloat& p);
+ReturnType foo(juce::AudioParameterBool& p);
 //...
 class TypeErasedParameter {
 public:
     //...
-    void foo() { _impl->foo(); }
+    ReturnType foo() { return _impl->foo(); }
 private:
     class ParameterConcept {
     public:
         virtual ~ParameterConcept() = default;
-        virtual void foo() = 0;
+        virtual ReturnType foo() = 0;
     };
     template <class Parameter>
     class ParameterModel : public ParameterConcept {
     public:
         //...
-        void foo() override { foo(_p); }
+        ReturnType foo() override { return foo(_p); }
 
     private:
         Parameter& _p;
@@ -764,24 +764,26 @@ private:
 };
 ```
 ```cpp {1-3,7,12,18}
-void serializeToJson(juce::AudioParameterFloat& p);
-void serializeToJson(juce::AudioParameterBool& p);
+struct JsonKeyValue { /* ... */ };
+//...
+JsonKeyValue serializeToJson(juce::AudioParameterFloat& p);
+JsonKeyValue serializeToJson(juce::AudioParameterBool& p);
 //...
 class TypeErasedParameter {
 public:
     //...
-    void serializeToJson() { _impl->serializeToJson(); }
+    JsonKeyValue serializeToJson() { return _impl->serializeToJson(); }
 private:
     class ParameterConcept {
     public:
         virtual ~ParameterConcept() = default;
-        virtual void serializeToJson() = 0;
+        virtual JsonKeyValue serializeToJson() = 0;
     };
     template <class Parameter>
     class ParameterModel : public ParameterConcept {
     public:
         //...
-        void serializeToJson() override { serializeToJson(_p); }
+        JsonKeyValue serializeToJson() override { return serializeToJson(_p); }
 
     private:
         Parameter& _p;
@@ -800,8 +802,8 @@ private:
 ```cpp {1-6,11,16,22}
 struct Serializer {
     virtual ~Serializer = default;
-    virtual void serializeToJson(juce::AudioParameterFloat& p) = 0;
-    virtual void serializeToJson(juce::AudioParameterBool& p) = 0;
+    virtual void serialize(juce::AudioParameterFloat& p) = 0;
+    virtual void serialize(juce::AudioParameterBool& p) = 0;
     //...
 };
 
@@ -1030,22 +1032,19 @@ struct JuceParameterVisitor {
 
 ### Free functions alternative
 
-```cpp {all|1-4|6,11|8,13}
-struct ParameterIdAndValue {
-  std::string id;
-  std::variant<float, int, bool, std::string> value;
-};
+```cpp {all|1|3,7|4,8}
+struct JsonKeyValue { /* ... */ };
 //...
-void serialize(ParameterIdAndValue& idAndValue, juce::AudioParameterFloat& p) {
-    idAndValue.id = p.getParameterID().toStdString();
-    idAndValue.value = p.get();
+JsonKeyValue serializeToJson(juce::AudioParameterFloat& p) {
+    return { p.getParameterID().toStdString(), p.get() };
 }
 
-void serialize(ParameterIdAndValue& idAndValue, juce::AudioParameterChoice& p) {
-    idAndValue.id = p.getParameterID().toStdString();
-    idAndValue.value = p.getCurrentChoiceName();
+JsonKeyValue serializeToJson(juce::AudioParameterChoice& p) {
+    return { p.getParameterID().toStdString(), p.getCurrentChoiceName() };
 }
 ```
+
+<!-- Assume we have JsonKeyValue -->
 
 ---
 
@@ -1059,18 +1058,18 @@ void serialize(ParameterIdAndValue& idAndValue, juce::AudioParameterChoice& p) {
 class TypeErasedParameter {
 public:
     //...
-    void serialize(ParameterIdAndValue& idAndValue) { _impl->serialize(idAndValue); }
+    JsonKeyValue serializeToJson() { return _impl->serialize(); }
 private:
     class ParameterConcept {
     public:
         virtual ~ParameterConcept() = default;
-        virtual void serialize(ParameterIdAndValue&) = 0;
+        virtual JsonKeyValue serializeToJson() = 0;
     };
     template <class Parameter>
     class ParameterModel : public ParameterConcept {
     public:
         //...
-        void serialize(ParameterIdAndValue& idAndValue) override { serialize(idAndValue, _p); }
+        JsonKeyValue serialize() override { return serializeToJson(_p); }
 
     private:
         Parameter& _p;
@@ -1086,14 +1085,10 @@ private:
 ### Free functions alternative
 
 ```cpp
-std::vector<ParameterIdAndValue> serializeParameters(std::vector<TypeErasedParameter> const& parameters) {
-    std::vector<ParameterIdAndValue> result;
-    for (TypeErasedParameter const& p : parameters) {
-        ParameterIdAndValue idAndValue;
-        p.serialize(idAndValue);
-        result.push_back(idAndValue);
-    }
-    return result;
+std::vector<JsonKeyValue> serializeParameters(std::vector<TypeErasedParameter> const& parameters) {
+    parameters
+        | std::views::transform([](auto const& p) { return p.serializeToJson(); })
+        | std::ranges::to<std::vector>());
 }
 ```
 
