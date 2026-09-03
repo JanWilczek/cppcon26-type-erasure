@@ -150,6 +150,10 @@ PluginEditor --> Parameters
 
 <img src="./assets/gain_parameter_example.svg" class="h-85"/>
 
+<p class="text-xs">
+"level slider" by Sina Schulz from <a href="https://openmoji.org/library/emoji-1F39A/">openmoji.org</a> licensed under CC BY-SA 4.0, modified
+</p>
+
  <!-- As an example, let's consider a plugin's volume, also called the gain. It can be represented as a floating-point value in the [0, 1] range that scales the plugin's output. 1 means no change in volume, and 0 means complete silence. Let's take a look at the requirements of such a parameter: -->
 
 ---
@@ -1230,7 +1234,7 @@ assert("0, 1, 2, 3, 4, 5" == (stringify_concat(std::list<int>{0, 1, 2, 3, 4, 5})
 1. Klaus Iglberger, *C++ Software Design: Design Principles and Patterns for High-Quality Software*, O'Reilly 2022
 1. Jan Wilczek & the JUCE team, *Official JUCE Audio Plugin Development Online Course*, [*https://wolfsoundacademy.com/juce*](https://wolfsoundacademy.com/juce) (available for free)
 1. Jan Wilczek, TheWolfSound.com
-1. Thanks to Daniel Lunow and Valentin Ziegler for helping me prepare this talk.
+1. Thanks to Daniel Lunow and Valentin Ziegler for helping me prepare this talk
 
 </v-clicks>
 
