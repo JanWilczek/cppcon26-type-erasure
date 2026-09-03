@@ -1033,7 +1033,7 @@ struct JuceParameterVisitor {
 
 # What if we want to support custom parameter classes?
 
-## Free functions alternative
+### Free functions alternative
 
 ```cpp
 struct ParameterIdAndValue {
@@ -1046,11 +1046,21 @@ void serialize(ParameterIdAndValue& idAndValue, juce::AudioParameterFloat& p) {
     idAndValue.value = p.get();
 }
 
-void serialize(juce::OutputStream&, juce::AudioParameterChoice& p) {
+void serialize(ParameterIdAndValue& idAndValue, juce::AudioParameterChoice& p) {
     idAndValue.id = p.getParameterID().toStdString();
     idAndValue.value = p.getCurrentChoiceName();
 }
-//...
+```
+
+---
+
+<style> .slidev-layout { zoom: 90% } </style>
+
+# What if we want to support custom parameter classes?
+
+### Free functions alternative
+
+```cpp
 class TypeErasedParameter {
 public:
     //...
@@ -1072,9 +1082,17 @@ private:
     };
     std::unique_ptr<ParameterConcept> _impl;
 };
+```
 
+---
+
+# What if we want to support custom parameter classes?
+
+### Free functions alternative
+
+```cpp
 std::vector<ParameterIdAndValue> serializeParameters(std::vector<TypeErasedParameter> const& parameters) {
-     std::vector<ParameterIdAndValue> result;
+    std::vector<ParameterIdAndValue> result;
     for (TypeErasedParameter const& p : parameters) {
         ParameterIdAndValue idAndValue;
         p.serialize(idAndValue);
@@ -1132,6 +1150,7 @@ int main() {
 
 <v-click>
 TODO: Link to tc::function_ref
+https://github.com/think-cell/think-cell-library
 </v-click>
 
 <!-- Also available in the think-cell library if your compiler doesn't yet support it. And speaking of the think-cell library... -->
@@ -1178,8 +1197,6 @@ auto stringify_concat(tc::any_range_ref<int> anyrngref) {
 
 assert("0, 1, 2, 3, 4, 5" == (stringify_concat(std::vector<int>{0, 1, 2, 3, 4, 5})));
 assert("0, 1, 2, 3, 4, 5" == (stringify_concat(std::list<int>{0, 1, 2, 3, 4, 5})));
-
-// TODO: vector of any_range_ref?
 ```
 
 <!-- In this example, we cannot use a `span` as the argument, because `list` is not contiguous. -->
@@ -1219,6 +1236,7 @@ $\implies$ overcome 3rd-party framework/library limitations
 1. Sean Parent, *Inheritance Is the Base Class of Evil*, GoingNative 2013
 1. Klaus Iglberger, *C++ Software Design: Design Principles and Patterns for High-Quality Software*, O'Reilly 2022
 1. Jan Wilczek & the JUCE team, *Official JUCE Audio Plugin Development Online Course*, [*https://wolfsoundacademy.com/juce*](https://wolfsoundacademy.com/juce) (available for free)
+1. Thanks to Daniel Lunow and Valentin Ziegler for helping me prepare this talk.
 
 </v-clicks>
 
@@ -1232,6 +1250,8 @@ $\implies$ overcome 3rd-party framework/library limitations
     1. $\equiv$ Use Type Erasure for polymorphic behavior without inheritance or templates
 1. Use Type Erasure to physically decouple types and operations on those types
     1. $\implies$ overcome 3rd-party framework/library limitations
+1. Check out our library at https://github.com/think-cell/think-cell-library    
+1. Apply for a C++ Developer position: hr@think-cell.com
 1. Contact me via jwilczek_ext@think-cell.com (slides too)
 
 <!-- If you have any questions or want to access slides contact me at -->
