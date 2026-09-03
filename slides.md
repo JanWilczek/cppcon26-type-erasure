@@ -178,6 +178,8 @@ hide: true
 </v-clicks>
 
 ---
+hide: true
+---
 
 # Recap
 
@@ -342,9 +344,7 @@ void PluginProcessor::processBlock(juce::AudioBuffer<float>& buffer,
 class PluginEditor : public juce::AudioProcessorEditor {
 public:
   explicit PluginEditor(PluginProcessor&);
-
-  void resized() override;
-
+  //...
 private:
   juce::Slider gainSlider;
   juce::SliderParameterAttachment gainAttachment;
@@ -418,7 +418,7 @@ struct SerializableParameters {
       return;
     }
 
-    archive(named(gain.getParameterID(), gain.get()));
+    archive(named("gain", gain));
   }
 };
 ```
@@ -1035,7 +1035,7 @@ struct JuceParameterVisitor {
 
 ### Free functions alternative
 
-```cpp
+```cpp {all|1-4|6,11|8,13}
 struct ParameterIdAndValue {
   std::string id;
   std::variant<float, int, bool, std::string> value;
@@ -1060,7 +1060,7 @@ void serialize(ParameterIdAndValue& idAndValue, juce::AudioParameterChoice& p) {
 
 ### Free functions alternative
 
-```cpp
+```cpp {all|4,9,15}
 class TypeErasedParameter {
 public:
     //...
@@ -1102,13 +1102,19 @@ std::vector<ParameterIdAndValue> serializeParameters(std::vector<TypeErasedParam
 }
 ```
 
-<!-- `TypeErasedParameter` and `seralizeParameters()` don't depend on any JUCE class anymore! -->
+<v-clicks>
+
+`TypeErasedParameter` and `seralizeParameters()` don't depend on any JUCE class anymore!
+
+The only requirement for type `T` contained in `TypeErasedParameter` is the presence of the `serialize(ParameterIdAndValue&, T const&)` overload.
+
+</v-clicks>
 
 ---
 
 # Classic Type Erasure: `std::function`
 
-```cpp
+```cpp {all|1-3|5-11,14|15-16|18-24}
 int invoke(std::function<int(int)> f) {
     return f(31);
 }
@@ -1123,7 +1129,8 @@ int addGlobal(int n) {
 
 int main() {
     std::println("{}", invoke(addGlobal));
-    std::println("{}", invoke([data = 42](int n) { return n + data; }));
+    auto data = 42;
+    std::println("{}", invoke([&data](int n) { return n + data; }));
 
     struct Functor {
         int m_n;
@@ -1237,9 +1244,9 @@ assert("0, 1, 2, 3, 4, 5" == (stringify_concat(std::list<int>{0, 1, 2, 3, 4, 5})
 # Summary
 
 1. A good use of Type Erasure is to manage a collection of strongly-typed objects (that may or may not share a base class), when the types of the objects are not fixed in advance (or we have no control over those types) and we want to perform common actions for all elements of the collection
-    1. $\equiv$ Use Type Erasure for polymorphic behavior without inheritance or templates
+    * $\equiv$ Use Type Erasure for polymorphic behavior without inheritance or templates
 1. Use Type Erasure to physically decouple types and operations on those types
-    1. $\implies$ overcome 3rd-party framework/library limitations
+    * $\implies$ overcome 3rd-party framework/library limitations
 1. Check out our library at https://github.com/think-cell/think-cell-library    
 1. Apply for a C++ Developer position: hr@think-cell.com
 1. Contact me via jwilczek_ext@think-cell.com (slides too)
