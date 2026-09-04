@@ -78,7 +78,7 @@ layout: cover
 
 <img src="./assets/ableton-live.png" class="h-120 w-auto"/>
 
-<!-- - Here's how a modern DAW looks like tracks, transport, assets, and... plugins. Plugins extend DAW capabilities: think sound synthesizers, and audio effects such as reverb -->
+<!-- Here's how a modern DAW looks like tracks, transport, assets, and... plugins. Plugins extend DAW capabilities: think sound synthesizers, and audio effects such as reverb -->
 
 ---
 
@@ -867,6 +867,50 @@ private:
 };
 ```
 
+
+<!-- But now we limited the number of types by specifying the `Visitor` base class -->
+
+---
+class: "!text-black"
+---
+
+# What if we want to support custom parameter classes?
+
+<div>
+
+$\implies$ make `TypeErasedParameter` templated on the `Visitor` class.
+
+</div>
+
+---
+
+# What if we want to support custom parameter classes?
+
+```cpp
+template <class Visitor>
+class TypeErasedParameter {
+public:
+  void accept(Visitor& v) {/* ... */}
+  //...
+};
+```
+
+---
+
+# What if we want to support custom parameter classes?
+
+## A good default
+
+```cpp
+struct JuceParameterVisitor {
+  virtual ~JuceParameterVisitor() = default;
+  virtual void visit(juce::AudioParameterBool&) = 0;
+  virtual void visit(juce::AudioParameterFloat&) = 0;
+  virtual void visit(juce::AudioParameterInt&) = 0;
+  virtual void visit(juce::AudioParameterChoice&) = 0;
+};
+```
+
 <!-- Ok, we know how to define operations on a single `TypeErasedParameter` object. But we designed the class primarily to treat it as a collection. How to use `TypeErasedParameters` as a collection? -->
 
 ---
@@ -941,96 +985,7 @@ private:
 
 ---
 
-# Serialization using a Visitor
-
-```cpp {none|1-4|6|9-14|17-22|15}
-struct ParameterIdAndValue {
-  std::string id;
-  std::variant<float, int, bool, std::string> value;
-};
-
-class ParameterValuesExtractor : public Visitor {
-public:
-  ParameterValuesExtractor() = default;
-  void visit(juce::AudioParameterFloat& parameter) override { visitImpl(parameter, parameter.get()); }
-  void visit(juce::AudioParameterBool& parameter) override { visitImpl(parameter, parameter.get()); }
-  void visit(juce::AudioParameterInt& parameter) override { visitImpl(parameter, parameter.get()); }
-  void visit(juce::AudioParameterChoice& parameter) override {
-      visitImpl(parameter, parameter.getCurrentChoiceName().toStdString());
-  }
-  [[nodiscard]] std::vector<ParameterIdAndValue> result() const { return _result; }
-private:
-  template <class P, class V>
-  void visitImpl(const P& parameter, V&& value) {
-    _result.emplace_back(parameter.getParameterID().toStdString(), std::forward<V>(value));
-  }
-
-  std::vector<ParameterIdAndValue> _result;
-};
-```
-
-<!-- Then we can define SerialisationTraits for ParameterIdAndValue -->
-
----
-
-# Serialization using a Visitor
-
-```cpp
-std::vector<ParameterIdAndValue> parameterIdsAndValues(std::vector<TypeErasedParameter> const& parameters) {
-  ParameterValuesExtractor visitor;
-  for (auto const& parameter : parameters) {
-    ph.accept(visitor);
-  }
-  return visitor.result();
-}
-```
-
----
-class: "!text-black"
----
-
-# What if we want to support custom parameter classes?
-
-<div>
-
-$\implies$ make `TypeErasedParameter` templated on the `Visitor` class.
-
-</div>
-
----
-
-# What if we want to support custom parameter classes?
-
-```cpp
-template <class Visitor>
-class TypeErasedParameter {
-public:
-  void accept(Visitor& v) {/* ... */}
-  //...
-};
-```
-
----
-
-# What if we want to support custom parameter classes?
-
-## A good default
-
-```cpp
-struct JuceParameterVisitor {
-  virtual ~JuceParameterVisitor() = default;
-  virtual void visit(juce::AudioParameterBool&) = 0;
-  virtual void visit(juce::AudioParameterFloat&) = 0;
-  virtual void visit(juce::AudioParameterInt&) = 0;
-  virtual void visit(juce::AudioParameterChoice&) = 0;
-};
-```
-
----
-
-# What if we want to support custom parameter classes?
-
-### Free functions alternative
+# Free functions-based Type Erasure
 
 ```cpp {all|1|3,7|4,8}
 struct JsonKeyValue { /* ... */ };
@@ -1044,15 +999,11 @@ JsonKeyValue serializeToJson(juce::AudioParameterChoice& p) {
 }
 ```
 
-<!-- Assume we have JsonKeyValue -->
+<!-- Let's revisit the solutino based on free functions. Assume we have JsonKeyValue -->
 
 ---
 
-<style> .slidev-layout { zoom: 90% } </style>
-
-# What if we want to support custom parameter classes?
-
-### Free functions alternative
+# Free functions-based Type Erasure
 
 ```cpp {all|4,9,15}
 class TypeErasedParameter {
@@ -1080,9 +1031,7 @@ private:
 
 ---
 
-# What if we want to support custom parameter classes?
-
-### Free functions alternative
+# Free functions-based Type Erasure
 
 ```cpp
 std::vector<JsonKeyValue> serializeParameters(std::vector<TypeErasedParameter> const& parameters) {
@@ -1096,7 +1045,7 @@ std::vector<JsonKeyValue> serializeParameters(std::vector<TypeErasedParameter> c
 
 `TypeErasedParameter` and `seralizeParameters()` don't depend on any JUCE class anymore!
 
-The only requirement for type `T` contained in `TypeErasedParameter` is the presence of the `serialize(ParameterIdAndValue&, T const&)` overload.
+The only requirement for type `T` contained in `TypeErasedParameter` is the presence of the `serializeToJson(T const&)` overload.
 
 </v-clicks>
 
