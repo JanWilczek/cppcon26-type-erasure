@@ -370,13 +370,13 @@ PluginEditor::PluginEditor(PluginProcessor& p)
 ```cpp {none|1-4|6-14|3}
 void PluginProcessor::getStateInformation(juce::MemoryBlock& destData) {
   juce::MemoryOutputStream outputStream{destData, true};
-  JsonSerializer::serialize(gain, outputStream);
+  serializeToJson(outputStream, gain);
 }
 
 void PluginProcessor::setStateInformation(const void* data, int sizeInBytes) {
   juce::MemoryInputStream inputStream{data, static_cast<size_t>(sizeInBytes),
                                       false};
-  const auto result = JsonSerializer::deserialize(inputStream, gain);
+  const auto result = deserializeFromJson(inputStream, gain);
   if (result.failed()) {
     // notify the user
   }
@@ -391,57 +391,19 @@ void PluginProcessor::setStateInformation(const void* data, int sizeInBytes) {
 
 ## Serialization
 
-<style> .slidev-layout { zoom: 80%; }</style>
+```cpp
+struct JsonKeyValue { /* ... */ };
 
-```cpp {all|2,22}
-struct SerializableParameters {
-  float gain;
-
-  static constexpr auto marshallingVersion = 1;
-
-  template <typename Archive, typename T>
-  static void serialise(Archive& archive, T& p) {
-    using namespace juce;
-
-    if (archive.getVersion() != 1) {
-      return;
-    }
-
-    std::string pluginName = "GAIN_PLUGIN";
-
-    archive(named("pluginName", pluginName));
-
-    if (pluginName != "GAIN_PLUGIN") {
-      return;
-    }
-
-    archive(named("gain", gain));
-  }
-};
-```
-
-<!-- Key point: we need a separate struct that describes parameter values (duplication) -->
-
----
-
-
-```cpp {1-2|3|9-12}
-void JsonSerializer::serialize(const juce::AudioParameterFloat& gain,
-                               juce::OutputStream& output) {
-  const auto json = juce::ToVar::convert(SerializableParameters{ gain });
-
-  if (!json.has_value()) {
-    return;
-  }
-
-  juce::JSON::writeToStream(output, *json,
-                            juce::JSON::FormatOptions{}
-                                .withSpacing(juce::JSON::Spacing::multiLine)
-                                .withMaxDecimalPlaces(2));
+void serializeToJson(juce::OutputStream& output, const juce::AudioParameterFloat& gain) {
+    JsonKeyValue parameters {
+        "parameters",
+        std::vector{ JsonKeyValue { "gain", gain.get() }},
+    };
+    // write to output
 }
 ```
 
-<!-- And deserialization code is very similar  -->
+<!-- Key point: we need a separate struct that describes parameter values (duplication) -->
 
 ---
 
@@ -463,7 +425,7 @@ void JsonSerializer::serialize(const juce::AudioParameterFloat& gain,
 ## Cons
 
 - "Manual" serialization code
-    - Adding new parameters requires updating `JsonSerializer` $\implies$ error-prone
+    - Adding new parameters requires updating `serializeToJson` $\implies$ error-prone
 
 </v-clicks>
 
@@ -480,6 +442,26 @@ class PluginProcessor : public juce::AudioProcessor {
     //...
     std::vector<juce::RangedAudioParameter*> parameters;
 };
+
+```
+
+---
+
+# Parameters via a vector of base class pointers
+
+```cpp
+void serializeToJson(juce::OutputStream& output, std::vector<juce::RangedAudioParameter*> parameters) {
+    JsonKeyValue parameters {
+        "parameters",
+        parameters
+            | std::views::transform(
+                [](auto const* p) {
+                    return JsonKeyValue { p->getParameterID().toStdString(), p->convertFrom0to1(p->getValue()) };
+                })
+            | std::ranges::to<std::vector>(),
+    };
+    // write to output
+}
 ```
 
 
@@ -490,8 +472,7 @@ class PluginProcessor : public juce::AudioProcessor {
 # Parameters via a vector of base class pointers
 
 ```cpp {all|10|5|19-20}
-class JUCE_API RangedAudioParameter   : public AudioProcessorParameterWithID
-{
+class JUCE_API RangedAudioParameter   : public AudioProcessorParameterWithID {
 public:
     float convertTo0to1(float v) const noexcept;
     float convertFrom0to1(float v) const noexcept;
@@ -505,11 +486,16 @@ public:
     void setValue(float newValue);
 };
 
-class JUCE_API  AudioParameterBool  : public RangedAudioParameter
-{
+class JUCE_API  AudioParameterBool  : public RangedAudioParameter {
 public:
     bool get() const noexcept;
     operator bool() const noexcept;
+    //...
+};
+
+class JUCE_API  AudioParameterChoice  : public RangedAudioParameter {
+public:
+    String getCurrentChoiceName() const;
     //...
 };
 ```
@@ -764,8 +750,6 @@ private:
 };
 ```
 ```cpp {1-3,7,12,18}
-struct JsonKeyValue { /* ... */ };
-//...
 JsonKeyValue serializeToJson(juce::AudioParameterFloat& p);
 JsonKeyValue serializeToJson(juce::AudioParameterBool& p);
 //...
@@ -797,7 +781,7 @@ private:
 
 ---
 
-# Serialization
+# Operations via a Visitor
 
 ```cpp {1-6,11,16,22}
 struct Serializer {
@@ -834,7 +818,7 @@ private:
 
 ---
 
-# Operations supporting all JUCE parameter classes
+# Operations via a Visitor
 
 ```cpp {1-6,11,16,22}
 struct Visitor {
@@ -977,7 +961,7 @@ private:
   juce::AudioParameterBool& boolParam;
   juce::AudioParameterInt& intParam;
   juce::AudioParameterChoice& choiceParam;
-  std::vector<TypeErasedParameter> parameterHolder;
+  std::vector<TypeErasedParameter> parameters;
 };
 ```
 
@@ -1080,7 +1064,7 @@ int main() {
 }
 ```
 
-<!-- std::function works with all possible function-like inputs, including functions referencing global data, local data, lambdas, and functors. -->
+<!-- std::function works with all possible function-like inputs, including functions referencing global data, local data, lambdas, and functors. No templates! -->
 
 ---
 
