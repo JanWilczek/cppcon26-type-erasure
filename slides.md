@@ -471,17 +471,15 @@ void serializeToJson(juce::OutputStream& output, std::vector<juce::RangedAudioPa
 
 # Parameters via a vector of base class pointers
 
-```cpp {all|10|5|19-20}
+```cpp {all|8|4|15-16,21}
 class JUCE_API RangedAudioParameter   : public AudioProcessorParameterWithID {
 public:
     float convertTo0to1(float v) const noexcept;
     float convertFrom0to1(float v) const noexcept;
 
     // inherited:
-
     /* Hosts will expect the value returned to be between 0 and 1.0. */
     float getValue() const;
-
     /* The value passed will be between 0 and 1.0. */
     void setValue(float newValue);
 };
@@ -492,7 +490,6 @@ public:
     operator bool() const noexcept;
     //...
 };
-
 class JUCE_API  AudioParameterChoice  : public RangedAudioParameter {
 public:
     String getCurrentChoiceName() const;
@@ -504,30 +501,29 @@ public:
 
 # Parameters via a vector of base class pointers
 
-```xml {all|4,7,9,15,22}
-<?xml version="1.0" encoding="UTF-8"?>
-
-<EdenSynthParameters>
-  <PARAM id="envelope.adbdr.attack.curve" value="1.0"/>
-  <PARAM id="envelope.adbdr.attack.time" value="30.0"/>
-  <PARAM id="envelope.adbdr.breakLevel" value="0.6000000238418579"/>
-  <PARAM id="envelope.adbdr.decay1.curve" value="1.0"/>
-  <PARAM id="envelope.adbdr.decay1.time" value="20.0"/>
-  <PARAM id="envelope.adbdr.decay2.curve" value="1.0"/>
-  <PARAM id="envelope.adbdr.decay2.time" value="20000.0"/>
-  <PARAM id="envelope.adbdr.release.curve" value="1.0"/>
-  <PARAM id="envelope.adbdr.release.time" value="300.0"/>
-  <PARAM id="filter.contourAmount" value="1.0"/>
-  <PARAM id="filter.cutoff" value="1.0"/>
-  <PARAM id="filter.passbandAttenuation" value="0.0"/>
-  <PARAM id="filter.resonance" value="0.0"/>
-  <PARAM id="frequencyOfA4" value="440.0"/>
-  <!-- more parameters... -->
-  <PARAM id="output.volume" value="1.0"/>
-  <PARAM id="pitchBend.semitonesDown" value="-12.0"/>
-  <PARAM id="pitchBend.semitonesUp" value="2.0"/>
-  <PARAM id="waveshaper.autoMakeUpGain" value="0.0"/>
-</EdenSynthParameters>
+```json {all|3,6,8,14,20}
+{
+    "parameters": [
+      { "id": "envelope.adbdr.attack.curve", "value": "1.0" },
+      { "id": "envelope.adbdr.attack.time", "value": "30.0" },
+      { "id": "envelope.adbdr.breakLevel", "value": "0.6000000238418579" },
+      { "id": "envelope.adbdr.decay1.curve", "value": "1.0" },
+      { "id": "envelope.adbdr.decay1.time", "value": "20.0" },
+      { "id": "envelope.adbdr.decay2.curve", "value": "1.0" },
+      { "id": "envelope.adbdr.decay2.time", "value": "20000.0" },
+      { "id": "envelope.adbdr.release.curve", "value": "1.0" },
+      { "id": "envelope.adbdr.release.time", "value": "300.0" },
+      { "id": "filter.contourAmount", "value": "1.0" },
+      { "id": "filter.cutoff", "value": "1.0" },
+      { "id": "filter.passbandAttenuation", "value": "0.0" },
+      { "id": "filter.resonance", "value": "0.0" },
+      { "id": "frequencyOfA4", "value": "440.0" },
+      { "id": "output.volume", "value": "1.0" },
+      { "id": "pitchBend.semitonesDown", "value": "-12.0" },
+      { "id": "pitchBend.semitonesUp", "value": "2.0" },
+      { "id": "waveshaper.autoMakeUpGain", "value": "0.0" }
+    ]
+}
 ```
 
 <!-- It's not interpretable, something the musicians can work with. I wanted a serialization format that allows state saving as well as preset handling -->
@@ -543,8 +539,8 @@ public:
 
 # Summary so far
 
-1. Parameter collection: extensibility
 1. Individual parameters: interpretability
+1. Parameter collection: extensibility
 
 <!-- We want to have both and we cannot extend the JUCE framework; it's a limitation of the framework -->
 
@@ -781,7 +777,7 @@ private:
 
 ---
 
-# Operations via a Visitor
+# Arbitrary serialization format
 
 ```cpp {1-6,11,16,22}
 struct Serializer {
@@ -940,7 +936,7 @@ private:
 
 # Usage
 
-```cpp {all|3-4|5-6,17|13,21}
+```cpp {all|3-4|5-6,17|13,21|17-21}
 class PluginProcessor : public juce::AudioProcessor {
 public:
   explicit PluginProcessor(
