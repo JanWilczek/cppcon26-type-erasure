@@ -392,12 +392,18 @@ void PluginProcessor::setStateInformation(const void* data, int sizeInBytes) {
 ## Serialization
 
 ```cpp
+struct JsonObject {/* ... */};
 struct JsonKeyValue { /* ... */ };
 
 void serializeToJson(juce::OutputStream& output, const juce::AudioParameterFloat& gain) {
     JsonKeyValue parameters {
         "parameters",
-        std::vector{ JsonKeyValue { "gain", gain.get() }},
+        std::vector{
+            JsonObject{
+                JsonKeyValue { "id", gain.getParameterID().toStdString() },
+                JsonKeyValue { "value", gain.get() }
+            },
+        }
     };
     // write to output
 }
@@ -449,14 +455,17 @@ class PluginProcessor : public juce::AudioProcessor {
 
 # Parameters via a vector of base class pointers
 
-```cpp
+```cpp {all|9}
 void serializeToJson(juce::OutputStream& output, std::vector<juce::RangedAudioParameter*> parameters) {
     JsonKeyValue parameters {
         "parameters",
         parameters
             | std::views::transform(
                 [](auto const* p) {
-                    return JsonKeyValue { p->getParameterID().toStdString(), p->convertFrom0to1(p->getValue()) };
+                    return JsonObject {
+                        JsonKeyValue { "id", p->getParameterID().toStdString() },
+                        JsonKeyValue { "value", p->convertFrom0to1(p->getValue()) }
+                    };
                 })
             | std::ranges::to<std::vector>(),
     };
@@ -504,24 +513,24 @@ public:
 ```json {all|3,6,8,14,20}
 {
     "parameters": [
-      { "id": "envelope.adbdr.attack.curve", "value": "1.0" },
-      { "id": "envelope.adbdr.attack.time", "value": "30.0" },
-      { "id": "envelope.adbdr.breakLevel", "value": "0.6000000238418579" },
-      { "id": "envelope.adbdr.decay1.curve", "value": "1.0" },
-      { "id": "envelope.adbdr.decay1.time", "value": "20.0" },
-      { "id": "envelope.adbdr.decay2.curve", "value": "1.0" },
-      { "id": "envelope.adbdr.decay2.time", "value": "20000.0" },
-      { "id": "envelope.adbdr.release.curve", "value": "1.0" },
-      { "id": "envelope.adbdr.release.time", "value": "300.0" },
-      { "id": "filter.contourAmount", "value": "1.0" },
-      { "id": "filter.cutoff", "value": "1.0" },
-      { "id": "filter.passbandAttenuation", "value": "0.0" },
-      { "id": "filter.resonance", "value": "0.0" },
-      { "id": "frequencyOfA4", "value": "440.0" },
-      { "id": "output.volume", "value": "1.0" },
-      { "id": "pitchBend.semitonesDown", "value": "-12.0" },
-      { "id": "pitchBend.semitonesUp", "value": "2.0" },
-      { "id": "waveshaper.autoMakeUpGain", "value": "0.0" }
+      { "id": "envelope.adbdr.attack.curve", "value": 1.0 },
+      { "id": "envelope.adbdr.attack.time", "value": 30.0 },
+      { "id": "envelope.adbdr.breakLevel", "value": 0.6000000238418579 },
+      { "id": "envelope.adbdr.decay1.curve", "value": 1.0 },
+      { "id": "envelope.adbdr.decay1.time", "value": 20.0 },
+      { "id": "envelope.adbdr.decay2.curve", "value": 1.0 },
+      { "id": "envelope.adbdr.decay2.time", "value": 20000.0 },
+      { "id": "envelope.adbdr.release.curve", "value": 1.0 },
+      { "id": "envelope.adbdr.release.time", "value": 300.0 },
+      { "id": "filter.contourAmount", "value": 1.0 },
+      { "id": "filter.cutoff", "value": 1.0 },
+      { "id": "filter.passbandAttenuation", "value": 0.0 },
+      { "id": "filter.resonance", "value": 0.0 },
+      { "id": "frequencyOfA4", "value": 440.0 },
+      { "id": "output.volume", "value": 1.0 },
+      { "id": "pitchBend.semitonesDown", "value": -12.0 },
+      { "id": "pitchBend.semitonesUp", "value": 2.0 },
+      { "id": "waveshaper.autoMakeUpGain", "value": 0.0 }
     ]
 }
 ```
@@ -746,24 +755,24 @@ private:
 };
 ```
 ```cpp {1-3,7,12,18}
-JsonKeyValue serializeToJson(juce::AudioParameterFloat& p);
-JsonKeyValue serializeToJson(juce::AudioParameterBool& p);
+JsonObject serializeToJson(juce::AudioParameterFloat& p);
+JsonObject serializeToJson(juce::AudioParameterBool& p);
 //...
 class TypeErasedParameter {
 public:
     //...
-    JsonKeyValue serializeToJson() { return _impl->serializeToJson(); }
+    JsonObject serializeToJson() { return _impl->serializeToJson(); }
 private:
     class ParameterConcept {
     public:
         virtual ~ParameterConcept() = default;
-        virtual JsonKeyValue serializeToJson() = 0;
+        virtual JsonObject serializeToJson() = 0;
     };
     template <class Parameter>
     class ParameterModel : public ParameterConcept {
     public:
         //...
-        JsonKeyValue serializeToJson() override { return serializeToJson(_p); }
+        JsonObject serializeToJson() override { return serializeToJson(_p); }
 
     private:
         Parameter& _p;
@@ -832,7 +841,7 @@ private:
     class ParameterConcept {
     public:
         virtual ~ParameterConcept() = default;
-        virtual void accept(Vistior&) = 0;
+        virtual void accept(Visitor&) = 0;
     };
     template <class Parameter>
     class ParameterModel : public ParameterConcept {
@@ -967,19 +976,23 @@ private:
 
 # Free functions-based Type Erasure
 
-```cpp {all|1|3,7|4,8}
-struct JsonKeyValue { /* ... */ };
-//...
-JsonKeyValue serializeToJson(juce::AudioParameterFloat& p) {
-    return { p.getParameterID().toStdString(), p.get() };
+```cpp {all|1,8|4,11}
+JsonObject serializeToJson(juce::AudioParameterBool& p) {
+    return {
+        JsonKeyValue { "id", p.getParameterID().toStdString() },
+        JsonKeyValue { "value", p.get() }
+    };
 }
 
-JsonKeyValue serializeToJson(juce::AudioParameterChoice& p) {
-    return { p.getParameterID().toStdString(), p.getCurrentChoiceName() };
+JsonObject serializeToJson(juce::AudioParameterChoice& p) {
+    return {
+        JsonKeyValue { "id", p.getParameterID().toStdString() },
+        JsonKeyValue { "value", p.getCurrentChoiceName() }
+    };
 }
 ```
 
-<!-- Let's revisit the solutino based on free functions. Assume we have JsonKeyValue -->
+<!-- Let's revisit the solutino based on free functions. -->
 
 ---
 
@@ -989,18 +1002,18 @@ JsonKeyValue serializeToJson(juce::AudioParameterChoice& p) {
 class TypeErasedParameter {
 public:
     //...
-    JsonKeyValue serializeToJson() { return _impl->serialize(); }
+    JsonObject serializeToJson() { return _impl->serialize(); }
 private:
     class ParameterConcept {
     public:
         virtual ~ParameterConcept() = default;
-        virtual JsonKeyValue serializeToJson() = 0;
+        virtual JsonObject serializeToJson() = 0;
     };
     template <class Parameter>
     class ParameterModel : public ParameterConcept {
     public:
         //...
-        JsonKeyValue serialize() override { return serializeToJson(_p); }
+        JsonObject serialize() override { return serializeToJson(_p); }
 
     private:
         Parameter& _p;
@@ -1014,7 +1027,7 @@ private:
 # Free functions-based Type Erasure
 
 ```cpp
-std::vector<JsonKeyValue> serializeParameters(std::vector<TypeErasedParameter> const& parameters) {
+std::vector<JsonObject> serializeParameters(std::vector<TypeErasedParameter> const& parameters) {
     parameters
         | std::views::transform([](auto const& p) { return p.serializeToJson(); })
         | std::ranges::to<std::vector>());
@@ -1084,7 +1097,7 @@ https://github.com/think-cell/think-cell-library/blob/main/tc/base/ref.h#L113
 
 # Another example: `tc::any_range_ref`
 
-```cpp
+```cpp {all|3-4|11,23|5-10,20-22|8}
 template <typename T>
 struct any_range_ref {
     template <typename Rng>
