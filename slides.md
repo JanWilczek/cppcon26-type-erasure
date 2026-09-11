@@ -1188,76 +1188,6 @@ TODO
 
 ---
 
-# Free functions-based Type Erasure
-
-```cpp {all|1,8|4,11}
-JsonObject serializeToJson(juce::AudioParameterBool& p) {
-    return {
-        JsonKeyValue { "id", p.getParameterID().toStdString() },
-        JsonKeyValue { "value", p.get() }
-    };
-}
-
-JsonObject serializeToJson(juce::AudioParameterChoice& p) {
-    return {
-        JsonKeyValue { "id", p.getParameterID().toStdString() },
-        JsonKeyValue { "value", p.getCurrentChoiceName() }
-    };
-}
-```
-
-<!-- Let's revisit the solutino based on free functions. -->
-
----
-
-# Free functions-based Type Erasure
-
-```cpp {all|4,9,15}
-class TypeErasedParameter {
-public:
-    //...
-    JsonObject serializeToJson() { return _impl->serialize(); }
-private:
-    class ParameterConcept {
-    public:
-        virtual ~ParameterConcept() = default;
-        virtual JsonObject serializeToJson() = 0;
-    };
-    template <class Parameter>
-    class ParameterModel : public ParameterConcept {
-    public:
-        //...
-        JsonObject serialize() override { return serializeToJson(_p); }
-
-    private:
-        Parameter& _p;
-    };
-    std::unique_ptr<ParameterConcept> _impl;
-};
-```
-
----
-
-# Free functions-based Type Erasure
-
-```cpp
-std::vector<JsonObject> serializeParameters(std::vector<TypeErasedParameter> const& parameters) {
-    parameters
-        | std::views::transform([](auto const& p) { return p.serializeToJson(); })
-        | std::ranges::to<std::vector>());
-}
-```
-
-<v-clicks>
-
-`TypeErasedParameter` and `seralizeParameters()` don't depend on any JUCE class anymore!
-
-The only requirement for type `T` contained in `TypeErasedParameter` is the presence of the `serializeToJson(T const&)` overload.
-
-</v-clicks>
-
----
-
 # Classic Type Erasure: `std::function`
 
 https://godbolt.org/z/ah1MK787T
@@ -1384,8 +1314,7 @@ assert("0, 1, 2, 3, 4, 5" == (stringify_concat(std::list<int>{0, 1, 2, 3, 4, 5})
 1. Sean Parent, *Inheritance Is the Base Class of Evil*, GoingNative 2013
 1. Klaus Iglberger, *C++ Software Design: Design Principles and Patterns for High-Quality Software*, O'Reilly 2022
 1. Jan Wilczek & the JUCE team, *Official JUCE Audio Plugin Development Online Course*, [*https://wolfsoundacademy.com/juce*](https://wolfsoundacademy.com/juce) (available for free)
-1. Jan Wilczek, TheWolfSound.com
-1. Thanks to Daniel Lunow and Valentin Ziegler for helping me prepare this talk
+1. Thanks to Daniel Lunow, Valentin Ziegler, and Roger Grau for helping me prepare this talk
 
 </v-clicks>
 
@@ -1395,13 +1324,19 @@ assert("0, 1, 2, 3, 4, 5" == (stringify_concat(std::list<int>{0, 1, 2, 3, 4, 5})
 
 # Summary
 
-1. A good use of Type Erasure is to manage a collection of strongly-typed objects (that may or may not share a base class), when the types of the objects are not fixed in advance (or we have no control over those types) and we want to perform common actions for all elements of the collection
-    * $\Leftrightarrow$ Use Type Erasure for polymorphic behavior without inheritance or templates
+1. Use Type Erasure for polymorphic behavior without inheritance or templates
 1. Use Type Erasure to physically decouple types and operations on those types
     * $\implies$ overcome 3rd-party framework/library limitations
-1. Check out our library at https://github.com/think-cell/think-cell-library    
+1. Check out our library at [github.com/think-cell/think-cell-library](https://github.com/think-cell/think-cell-library)
 1. Apply for a C++ Developer position: hr@think-cell.com
-1. Contact me via jwilczek_ext@think-cell.com (slides too)
+1. Contact me via jwilczek_ext@think-cell.com
 
 <!-- If you have any questions or want to access slides contact me at -->
 
+<img src="./assets/qr_code.png" class="absolute bottom-8 right-8 w-80 h-auto object-cover"/>
+
+<v-drag-arrow pos="532,461,93,-55"/>
+
+<v-drag pos="466,454,53,34">
+  <span>slides</span>
+</v-drag>
