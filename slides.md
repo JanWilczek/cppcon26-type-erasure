@@ -325,13 +325,33 @@ void PluginProcessor::getStateInformation(juce::MemoryBlock& destData) {
 }
 
 void PluginProcessor::setStateInformation(const void* data, int sizeInBytes) {
-  juce::MemoryInputStream inputStream{data, static_cast<size_t>(sizeInBytes),
-                                      false};
+  juce::MemoryInputStream inputStream{data, static_cast<size_t>(sizeInBytes), false};
   // read parameters from input stream
 }
 ```
 
  <!-- JUCE provides `setStateInformation()` and `getStateInformation()` callbacks in the PluginProcessor to allows reading and writing plugin state (incl. parameters). -->
+
+---
+
+# Serialization
+
+parameter IDs and human-readable values $\rightarrow$ data format (e.g., JSON)
+
+```cpp
+juce::AudioParameterFloat& floatParam;
+juce::AudioParameterInt& intParam;
+juce::AudioParameterBool& boolParam;
+juce::AudioParameterChoice& choiceParam;
+// ⬇️
+struct IdAndValue {
+    std::string id;
+    std::variant<float,int,bool,std::string> value;
+};
+std::vector<IdAndValue> serializedParameters;
+// ⬇️
+// serialization to file and to stream
+```
 
 ---
 
@@ -348,28 +368,19 @@ struct IdAndValue {
     std::string id; // "gain"
     float value;    // 1.f
 };
+// ⬇️
+```
+```json
+{
+    "parameters": [
+        {
+            "id": "gain",
+            "value": 1.0
+        }
+    ]
+}
 ```
 
-
----
-
-# Serialization
-
-
-```cpp
-juce::AudioParameterFloat& floatParam;
-juce::AudioParameterInt& intParam;
-juce::AudioParameterBool& boolParam;
-juce::AudioParameterChoice& choiceParam;
-// ⬇️
-struct IdAndValue {
-    std::string id;
-    std::variant<float,int,bool,std::string> value;
-};
-std::vector<IdAndValue> serializedParameters;
-// ⬇️
-// serialization to file and to stream
-```
 
 <!-- Serialization here is just a running example for an operation that operates on all parameters in our plugin -->
 
@@ -510,8 +521,9 @@ public:
 
 # Parameters via a vector of base class pointers
 
-```cpp {all|8}
-std::vector<IdAndValue> serializeParameters(juce::OutputStream& output, std::vector<juce::RangedAudioParameter*> parameters) {
+```cpp {all|9}
+std::vector<IdAndValue> serializeParameters(juce::OutputStream& output,
+                                            const std::vector<juce::RangedAudioParameter*>& parameters) {
     return
         parameters
             | std::views::transform(
@@ -598,8 +610,6 @@ std::vector<IdAndValue> serializeParameters(juce::OutputStream& output, std::vec
 
 <!-- We want to have both and we cannot extend the JUCE framework; it's a limitation of the framework; but we want to use the framework's classes because of all the stuff they do for us -->
 
----
-layout: center
 ---
 
 # How can we treat parameters as a collection without losing type information? 🤔
@@ -840,14 +850,29 @@ private:
 
 # Serialization
 
-```cpp {all}
-std::vector<IdAndValue> serializeParameters(juce::OutputStream& output, const std::vector<TypeErasedParameter>& parameters) {
+```cpp {1-4|6-10}
+template <typename T>
+ParameterIdAndValue serialize(const T& parameter) {
+  return { parameter.getParameterID().toStdString(), parameter.get() };
+}
+
+template <>
+ParameterIdAndValue serialize<juce::AudioParameterChoice>(const juce::AudioParameterChoice& parameter) {
+  return { parameter.getParameterID().toStdString(), parameter.getCurrentChoiceName().toStdString() };
+}
+```
+
+---
+
+# Serialization
+
+```cpp
+std::vector<IdAndValue> serializeParameters(juce::OutputStream& output,
+                                            const std::vector<TypeErasedParameter>& parameters) {
     return
         parameters
             | std::views::transform(
-                [](auto const* p) {
-                    return p->serialize();
-                })
+                [](auto const* p) { return p->serialize(); })
             | std::ranges::to<std::vector>();
 }
 ```
@@ -1164,7 +1189,10 @@ std::get<choiceParam>(processor.parameters).getCurrentChoiceName();
 
 ## Serialization
 
-```cpp {1-3|4|6,12|7-11|8-10}
+```cpp {1-2|4-7|8|10,16|11-15|12-15}
+IdAndValue serialize(juce::AudioParameterFloat& p);
+IdAndValue serialize(juce::AudioParameterBool& p);
+//...
 template <typename... Ts>
 std::vector<std::variant<float,int,bool,std::string>> parameterIdsAndValues(
     const std::tuple<Ts...>& parameters) {
@@ -1173,31 +1201,12 @@ std::vector<std::variant<float,int,bool,std::string>> parameterIdsAndValues(
   std::apply(
       [&result](const Ts&... parameterRefs) {
         (
-            (result.emplace_back(parameterRefs.getParameterID().toStdString(), parameterValue(parameterRefs))),
+            (result.emplace_back(serialize(parameterRefs))),
         ...);
       },
       parameters);
 
   return result;
-}
-```
-
----
-
-# Tuple with parameter references
-
-## Serialization
-
-```cpp {1-4|6-10}
-template <typename T>
-std::variant<float,int,bool,std::string> parameterValue(const T& parameter) {
-  return parameter.get();
-}
-
-template <>
-std::variant<float,int,bool,std::string> parameterValue<juce::AudioParameterChoice>(
-    const juce::AudioParameterChoice& parameter) {
-  return parameter.getCurrentChoiceName().toStdString();
 }
 ```
 
