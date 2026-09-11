@@ -359,23 +359,60 @@ PluginEditor::PluginEditor(PluginProcessor& p)
 
 ## Serialization
 
-```cpp {none|1-4|6-14|3}
+```cpp {none|1-4|6-14}
 void PluginProcessor::getStateInformation(juce::MemoryBlock& destData) {
   juce::MemoryOutputStream outputStream{destData, true};
-  serializeToJson(outputStream, gain);
+  // write parameters to outputStream
 }
 
 void PluginProcessor::setStateInformation(const void* data, int sizeInBytes) {
   juce::MemoryInputStream inputStream{data, static_cast<size_t>(sizeInBytes),
                                       false};
-  const auto result = deserializeFromJson(inputStream, gain);
-  if (result.failed()) {
-    // notify the user
-  }
+  // read parameters from input stream
 }
 ```
 
  <!-- JUCE provides `setStateInformation()` and `getStateInformation()` callbacks in the PluginProcessor to allows reading and writing plugin state (incl. parameters). serialize() hides the complexity -->
+
+---
+
+# Serialization
+
+parameter IDs and human-readable values $\rightarrow$ data format (e.g., JSON)
+
+## Example for gain
+
+```cpp
+juce::AudioParameterFloat& gain; // value: 1.f
+// ⬇️
+struct IdAndValue {
+    std::string id; // "gain"
+    float value;    // 1.f
+};
+```
+
+
+---
+
+# Serialization
+
+
+```cpp
+juce::AudioParameterFloat& floatParam;
+juce::AudioParameterInt& intParam;
+juce::AudioParameterBool& boolParam;
+juce::AudioParameterChoice& choiceParam;
+// ⬇️
+struct IdAndValue {
+    std::string id;
+    std::variant<float,int,bool,std::string> value;
+};
+std::vector<IdAndValue> serializedParameters;
+// ⬇️
+// serialization to file and to stream
+```
+
+<!-- Serialization here is just a running example for an operation that operates on all parameters in our plugin -->
 
 ---
 
@@ -384,24 +421,59 @@ void PluginProcessor::setStateInformation(const void* data, int sizeInBytes) {
 ## Serialization
 
 ```cpp
-struct JsonObject {/* ... */};
-struct JsonKeyValue { /* ... */ };
-
-void serializeToJson(juce::OutputStream& output, const juce::AudioParameterFloat& gain) {
-    JsonKeyValue parameters {
-        "parameters",
-        std::vector{
-            JsonObject{
-                JsonKeyValue { "id", gain.getParameterID().toStdString() },
-                JsonKeyValue { "value", gain.get() }
-            },
-        }
+std::vector<IdAndValue> serialize(juce::OutputStream& output, const juce::AudioParameterFloat& gain) {
+    return {
+        { .id = gain.getParameterID.toStdString(), .value = gain.get() }
     };
-    // write to output
 }
 ```
 
-<!-- Key point: we need a separate struct that describes parameter values (duplication) -->
+---
+
+# Parameters via references only
+
+## Serialization
+
+```cpp
+std::vector<IdAndValue> serialize(juce::OutputStream& output,
+    const juce::AudioParameterFloat& floatParam,
+    const juce::AudioParameterInt& intParam,
+    const juce::AudioParameterBool& boolParam,
+    const juce::AudioParameterChoice& choiceParam) {
+
+    return {
+        { .id = floatParam.getParameterID.toStdString(),  .value = floatParam.get() }
+        { .id = intParam.getParameterID.toStdString(),    .value = intParam.get() }
+        { .id = boolParam.getParameterID.toStdString(),   .value = boolParam.get() }
+        { .id = choiceParam.getParameterID.toStdString(), .value = choiceParam.getCurrentChoiceName() } // 👈
+    };
+}
+```
+
+<!-- Key point: we need to list all parameters individually. Also we must remember to call a different API on choiceParam -->
+
+---
+
+# Parameters via references only
+
+## Serialization
+
+```json
+{
+    "parameters": [
+        {
+            "id": "floatParam",
+            "value": 1.0
+        },
+        {
+            "id": "choiceParam",
+            "value": "choice 1"
+        },
+        //...
+    ]
+}
+```
+
 
 ---
 
@@ -438,35 +510,12 @@ void serializeToJson(juce::OutputStream& output, const juce::AudioParameterFloat
 ```cpp
 class PluginProcessor : public juce::AudioProcessor {
     //...
+    juce::AudioParameterFloat& floatParam; // for audio processing & UI
+    // remaining parameters...
     std::vector<juce::RangedAudioParameter*> parameters;
 };
 
 ```
-
----
-
-# Parameters via a vector of base class pointers
-
-```cpp {all|9}
-void serializeToJson(juce::OutputStream& output, std::vector<juce::RangedAudioParameter*> parameters) {
-    JsonKeyValue parameters {
-        "parameters",
-        parameters
-            | std::views::transform(
-                [](auto const* p) {
-                    return JsonObject {
-                        JsonKeyValue { "id", p->getParameterID().toStdString() },
-                        JsonKeyValue { "value", p->convertFrom0to1(p->getValue()) }
-                    };
-                })
-            | std::ranges::to<std::vector>(),
-    };
-    // write to output
-}
-```
-
-
-<!-- We cannot hold values, just references or pointers. JUCE AudioProcessorValueTreeState -->
 
 ---
 
@@ -502,6 +551,27 @@ public:
 
 # Parameters via a vector of base class pointers
 
+```cpp {all|8}
+std::vector<IdAndValue> serialize(juce::OutputStream& output, std::vector<juce::RangedAudioParameter*> parameters) {
+    return
+        parameters
+            | std::views::transform(
+                [](auto const* p) -> IdAndValue {
+                    return {
+                        .id = p->getParameterID().toStdString(),
+                        .value = p->convertFrom0to1(p->getValue())
+                    };
+                })
+            | std::ranges::to<std::vector>();
+}
+```
+
+<!-- We cannot hold values, just references or pointers. JUCE AudioProcessorValueTreeState -->
+
+---
+
+# Parameters via a vector of base class pointers
+
 ```json {all|3,6,8,14,20}
 {
     "parameters": [
@@ -531,6 +601,30 @@ public:
 
 ---
 
+# Parameters via a vector of base class pointers
+
+<v-clicks>
+
+## Pros
+
+- "Automatic" serialization code
+- Easy access to singular parameters
+    - `processBlock()`
+    - `PluginEditor`
+- We can use any serialization format we like
+- Serialization code can be reused for presets
+- Easy UI attachments
+- Possibility to add UI state serialization
+
+## Cons
+
+- No type information during serialization
+    - $\rightarrow$ human-unfriendly format
+
+</v-clicks>
+
+---
+
 # Summary so far
 
 1. We can treat plugin parameters individually using only concrete `juce::AudioParameterFloat|Bool|Int|Choice` classes $\implies$ We cannot (easily) define operations on a collection of parameters
@@ -543,7 +637,7 @@ public:
 1. Individual parameters: interpretability
 1. Parameter collection: extensibility
 
-<!-- We want to have both and we cannot extend the JUCE framework; it's a limitation of the framework -->
+<!-- We want to have both and we cannot extend the JUCE framework; it's a limitation of the framework; but we want to use the framework's classes because of all the stuff they do for us -->
 
 ---
 layout: center
@@ -551,11 +645,20 @@ layout: center
 
 # How can we treat parameters as a collection without losing type information? 🤔
 
-<v-click>
-<h2>Answer: Type Erasure!</h2>
-</v-click>
+<v-clicks>
 
-<!-- I don't want explain what type erasure is. Instead we'll discover this pattern while solving this problem. -->
+- ~~change JUCE~~
+- `dynamic_cast` on `std::vector<juce::RangedAudioParameter*>` elements?
+    - verbose, error-prone, not general
+- `std::vector<std::variant<juce::AudioParameterFloat*, juce::AudioParameterInt*, juce::AudioParameterBool*, juce::AudioParameterChoice*>>`
+    - limits the set of supported parameter types
+- Extending each `juce::AudioParameter_` class with a base class controlled by us
+    - manual, unusable as a library feature
+- Type Erasure?
+
+</v-clicks>
+
+<!-- We want a general approach that will work for many plugins; some with JUCE parameter classes only, some with our custom classes. I don't want explain what type erasure is. Instead we'll discover this pattern while solving this problem. -->
 
 ---
 layout: center
@@ -747,24 +850,24 @@ private:
 };
 ```
 ```cpp {1-3,7,12,18}
-JsonObject serializeToJson(juce::AudioParameterFloat& p);
-JsonObject serializeToJson(juce::AudioParameterBool& p);
+IdAndValue serialize(juce::AudioParameterFloat& p);
+IdAndValue serialize(juce::AudioParameterBool& p);
 //...
 class TypeErasedParameter {
 public:
     //...
-    JsonObject serializeToJson() { return _impl->serializeToJson(); }
+    IdAndValue serialize() { return _impl->serialize(); }
 private:
     class ParameterConcept {
     public:
         virtual ~ParameterConcept() = default;
-        virtual JsonObject serializeToJson() = 0;
+        virtual IdAndValue serialize() = 0;
     };
     template <class Parameter>
     class ParameterModel : public ParameterConcept {
     public:
         //...
-        JsonObject serializeToJson() override { return serializeToJson(_p); }
+        IdAndValue serialize() override { return serialize(_p); }
 
     private:
         Parameter& _p;
@@ -774,41 +877,20 @@ private:
 ```
 ````
 
-<!-- I don't like the approach using free functions; we would probably need to come up with long function names to avoid argument-dependent lookup. Furthermore, each serialization mechanism, requires adding a separate function or linking to a separate free function definition set. Can we do better? -->
-
 ---
 
-# Arbitrary serialization format
+# Serialization
 
-```cpp {1-6,11,16,22}
-struct Serializer {
-    virtual ~Serializer = default;
-    virtual void serialize(juce::AudioParameterFloat& p) = 0;
-    virtual void serialize(juce::AudioParameterBool& p) = 0;
-    //...
-};
-
-class TypeErasedParameter {
-public:
-    //...
-    void serialize(Serializer& s) { _impl->serialize(s); }
-private:
-    class ParameterConcept {
-    public:
-        virtual ~ParameterConcept() = default;
-        virtual void serialize(Serializer&) = 0;
-    };
-    template <class Parameter>
-    class ParameterModel : public ParameterConcept {
-    public:
-        //...
-        void serialize(Serializer& s) override { serializer.serialize(_p); }
-
-    private:
-        Parameter& _p;
-    };
-    std::unique_ptr<ParameterConcept> _impl;
-};
+```cpp {all}
+std::vector<IdAndValue> serialize(juce::OutputStream& output, const std::vector<TypeErasedParameter>& parameters) {
+    return
+        parameters
+            | std::views::transform(
+                [](auto const* p) {
+                    return p->serialize();
+                })
+            | std::ranges::to<std::vector>();
+}
 ```
 
 <!-- Each new operation requires adding 3 functions. Cannot we streamline it? -->
@@ -868,10 +950,10 @@ $\implies$ make `TypeErasedParameter` templated on the `Visitor` class.
 # What if we want to support custom parameter classes?
 
 ```cpp
-template <class Visitor>
+template <class VisitorBase>
 class TypeErasedParameter {
 public:
-  void accept(Visitor& v) {/* ... */}
+  void accept(VisitorBase& v) {/* ... */}
   //...
 };
 ```
@@ -962,7 +1044,7 @@ private:
 };
 ```
 
-<!-- So you can still access individual parameters, but now you can also perform operations on all of them easily (maintaining type safety). Once we have all this in place, adding serialization is a breeze. -->
+<!-- So you can still access individual parameters, but now you can also perform operations on all of them easily (maintaining type safety). -->
 
 ---
 
