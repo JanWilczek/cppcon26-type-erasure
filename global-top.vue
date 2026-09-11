@@ -4,6 +4,10 @@
     v-if="$nav.currentLayout !== 'cover' && $nav.currentPage !== 1"
     class="absolute top-4 right-4 w-32 h-auto pointer-events-none" src="./assets/thinkcell_logo_color_RGB.svg" alt="thinkcell logo"/>
 
+  <img
+    v-if="$nav.currentLayout !== 'cover' && $nav.currentPage !== 1"
+    class="absolute bottom-6 right-20 w-100 opacity-3 pointer-events-none select-none" src="./assets/thinkcell_symbol_color_RGB.svg" alt="thinkcell symbol"/>
+
   <footer
     v-if="$nav.currentLayout !== 'cover' && $nav.currentLayout !== 'image'"
   >
