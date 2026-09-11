@@ -1047,7 +1047,50 @@ TODO: tc::any_ref
 
 ---
 
-TODO: tc::any_range_ref
+# `tc::any_range_ref`
+
+```cpp {all|3-4|11,23|5-10,20-22|8}
+template <typename T>
+struct any_range_ref {
+    template <typename Rng>
+    any_range_ref(Rng&& rng) noexcept
+        : m_pfuncTypeErased(
+            [](tc::no_adl::any_ref anyrefRng,
+               tc::no_adl::function_ref<tc::break_or_continue (T) noexcept> fn) noexcept -> tc::break_or_continue {
+                return tc::for_each(anyrefRng.get_ref<std::remove_reference_t<Rng>>(), fn);
+            }
+        )
+        , m_anyrefRng(tc::as_lvalue(rng))
+    {}
+
+    tc::break_or_continue
+    operator()(tc::no_adl::function_ref<tc::break_or_continue (T) noexcept> fn) const& noexcept {
+        return m_pfuncTypeErased(m_anyrefRng, fn);
+    }
+
+private:
+    tc::no_adl::type_erased_function_ptr<
+        /*bNoExcept*/true, tc::break_or_continue, tc::no_adl::function_ref<tc::break_or_continue (T) noexcept>>
+            m_pfuncTypeErased;
+    tc::no_adl::any_ref m_anyrefRng;
+};
+```
+
+---
+
+# Another example: `tc::any_range_ref`
+
+```cpp
+auto stringify_concat(tc::any_range_ref<int> anyrngref) {
+	return tc::make<tc::string>(tc::join_with_separator(", ", tc::transform(anyrngref, tc_fn(tc::as_dec))));
+}
+
+assert("0, 1, 2, 3, 4, 5" == (stringify_concat(std::vector<int>{0, 1, 2, 3, 4, 5})));
+assert("0, 1, 2, 3, 4, 5" == (stringify_concat(std::list<int>{0, 1, 2, 3, 4, 5})));
+```
+
+<!-- In this example, we cannot use a `span` as the argument, because `list` is not contiguous. -->
+
 
 ---
 
@@ -1160,7 +1203,7 @@ std::variant<float,int,bool,std::string> parameterValue<juce::AudioParameterChoi
 
 ---
 
-# Type-erased parameters
+# Tuple with parameter references
 
 <v-clicks>
 
@@ -1183,8 +1226,12 @@ std::variant<float,int,bool,std::string> parameterValue<juce::AudioParameterChoi
 </v-clicks>
 
 ---
+layout: center
+---
 
-TODO
+# An aside: the other use of type erasure
+
+<!-- I really have no good segway to this... -->
 
 ---
 
@@ -1235,53 +1282,7 @@ https://github.com/think-cell/think-cell-library/blob/main/tc/base/ref.h#L113
 
 </v-click>
 
-<!-- Also available in the think-cell library if your compiler doesn't yet support it (MSVC and AppleClang still don't). And speaking of the think-cell library... -->
-
----
-
-# Another example: `tc::any_range_ref`
-
-```cpp {all|3-4|11,23|5-10,20-22|8}
-template <typename T>
-struct any_range_ref {
-    template <typename Rng>
-    any_range_ref(Rng&& rng) noexcept
-        : m_pfuncTypeErased(
-            [](tc::no_adl::any_ref anyrefRng,
-               tc::no_adl::function_ref<tc::break_or_continue (T) noexcept> fn) noexcept -> tc::break_or_continue {
-                return tc::for_each(anyrefRng.get_ref<std::remove_reference_t<Rng>>(), fn);
-            }
-        )
-        , m_anyrefRng(tc::as_lvalue(rng))
-    {}
-
-    tc::break_or_continue
-    operator()(tc::no_adl::function_ref<tc::break_or_continue (T) noexcept> fn) const& noexcept {
-        return m_pfuncTypeErased(m_anyrefRng, fn);
-    }
-
-private:
-    tc::no_adl::type_erased_function_ptr<
-        /*bNoExcept*/true, tc::break_or_continue, tc::no_adl::function_ref<tc::break_or_continue (T) noexcept>>
-            m_pfuncTypeErased;
-    tc::no_adl::any_ref m_anyrefRng;
-};
-```
-
----
-
-# Another example: `tc::any_range_ref`
-
-```cpp
-auto stringify_concat(tc::any_range_ref<int> anyrngref) {
-	return tc::make<tc::string>(tc::join_with_separator(", ", tc::transform(anyrngref, tc_fn(tc::as_dec))));
-}
-
-assert("0, 1, 2, 3, 4, 5" == (stringify_concat(std::vector<int>{0, 1, 2, 3, 4, 5})));
-assert("0, 1, 2, 3, 4, 5" == (stringify_concat(std::list<int>{0, 1, 2, 3, 4, 5})));
-```
-
-<!-- In this example, we cannot use a `span` as the argument, because `list` is not contiguous. -->
+<!-- Also available in the think-cell library if your compiler doesn't yet support it (MSVC and AppleClang still don't). -->
 
 ---
 
@@ -1296,7 +1297,7 @@ assert("0, 1, 2, 3, 4, 5" == (stringify_concat(std::list<int>{0, 1, 2, 3, 4, 5})
 
 </v-clicks>
 
-<!-- Type erasure wrappers alllow physically decoupling a class from its behavior/interface. They can be in separate translation units and don't have to be templates. Allow avoiding function templates, which may be desired if you want to add virtual functions that cannot be templates -->
+<!-- "I didn't want to touch those classes". Type erasure wrappers alllow physically decoupling a class from its behavior/interface. They can be in separate translation units and don't have to be templates. Allow avoiding function templates, which may be desired if you want to add virtual functions that cannot be templates -->
 
 ---
 
