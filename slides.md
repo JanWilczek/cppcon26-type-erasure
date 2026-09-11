@@ -252,13 +252,11 @@ private:
 
 # Parameters via references only
 
-```cpp {all|13-14|2|4-6|8|7,9}
+```cpp {all|11-12|2|3-4|6|5,7}
 namespace {
 juce::AudioParameterFloat& createGainParameter(juce::AudioProcessor& processor) {
-  constexpr auto versionHint = 1;
   auto parameter = std::make_unique<juce::AudioParameterFloat>(
-          juce::ParameterID{"gain", versionHint}, "Gain",
-          juce::NormalisableRange<float>{0.f, 1.f, 0.01f}, 1.f);
+          "gain", "Gain", juce::NormalisableRange<float>{0.f, 1.f, 0.01f}, 1.f);
   auto& result = *parameter;
   processor.addParameter(parameter.release());
   return result;
@@ -1017,6 +1015,42 @@ private:
 
 ---
 
+# Type-erased parameter using `std::any`
+
+```cpp
+IdAndValue serialize(juce::AudioParameterFloat& p);
+IdAndValue serialize(juce::AudioParameterBool& p);
+// ...
+class AnyParameter {
+public:
+    template <typename T>
+    AnyParameter(T& parameterRef)
+        : parameterPtr{&parameterRef},
+          serializer{[]() -> IdAndValue {
+              auto ptr = std::any_cast<T*>(parameterPtr);
+              return serialize(*ptr);
+          }} {}
+
+    IdAndValue serialize() { return serializer(); }
+
+private:
+    std::any parameterPtr;
+    std::function<IdAndValue()> serializer;
+};
+```
+
+<!-- We cannot store a reference in std::any. std::any and std::function already implement type erasure -->
+
+---
+
+TODO: tc::any_ref
+
+---
+
+TODO: tc::any_range_ref
+
+---
+
 # Type-erased parameters
 
 <v-clicks>
@@ -1025,8 +1059,6 @@ private:
 
 - Full type safety
 - Easy access to singular parameters
-    - `processBlock()`
-    - `PluginEditor`
 - We can use any serialization format we like
 - Serialization code can be reused for presets
 - Easy UI attachments
@@ -1039,6 +1071,120 @@ private:
 - We need to store an additional vector
 
 </v-clicks>
+
+---
+
+# Tuple with parameter references
+
+```cpp {all|1-2|5-6|10-18}
+template <typename Parameter, typename... Args>
+Parameter& createAndAddParameter(juce::AudioProcessor& processor, Args&&... args) { /* ... */ }
+
+class PluginProcessor : public juce::AudioProcessor {
+  std::tuple<juce::AudioParameterFloat&, juce::AudioParameterBool&,
+    juce::AudioParameterInt&, juce::AudioParameterChoice&> parameters;
+
+public:
+  PluginProcessorWithParameterTuple()
+      : parameters{createAndAddParameter<juce::AudioParameterFloat>(
+                        *this, "floatParam", "Float Param", juce::NormalisableRange{1.f, 10.f}, 5.f),
+                   createAndAddParameter<juce::AudioParameterBool>(
+                        *this, "boolParam", "Bool Param", true),
+                   createAndAddParameter<juce::AudioParameterInt>(
+                        *this, "intParam", "Int Param", 5, 10, 6),
+                   createAndAddParameter<juce::AudioParameterChoice>(
+                        *this, "choiceParam", "Choice Param",
+                        juce::StringArray{"choice 0", "choice 1", "choice 2"}, 1)} {}
+};
+```
+
+---
+
+# Tuple with parameter references
+
+## Type-safe access
+
+```cpp
+enum Parameters { floatParam, boolParam, intParam, choiceParam };
+
+std::get<floatParam>(processor.parameters) = 2.f;
+std::get<boolParam>(processor.parameters) = false;
+std::get<intParam>(processor.parameters) = 7;
+std::get<choiceParam>(processor.parameters).getCurrentChoiceName();
+```
+
+<!-- Type and "index" are checked at compile time. Subtle errors possible -->
+
+---
+
+# Tuple with parameter references
+
+## Serialization
+
+```cpp {1-3|4|6,12|7-11|8-10}
+template <typename... Ts>
+std::vector<std::variant<float,int,bool,std::string>> parameterIdsAndValues(
+    const std::tuple<Ts...>& parameters) {
+  std::vector<std::variant<float,int,bool,std::string>> result;
+
+  std::apply(
+      [&result](const Ts&... parameterRefs) {
+        (
+            (result.emplace_back(parameterRefs.getParameterID().toStdString(), parameterValue(parameterRefs))),
+        ...);
+      },
+      parameters);
+
+  return result;
+}
+```
+
+---
+
+# Tuple with parameter references
+
+## Serialization
+
+```cpp {1-4|6-10}
+template <typename T>
+std::variant<float,int,bool,std::string> parameterValue(const T& parameter) {
+  return parameter.get();
+}
+
+template <>
+std::variant<float,int,bool,std::string> parameterValue<juce::AudioParameterChoice>(
+    const juce::AudioParameterChoice& parameter) {
+  return parameter.getCurrentChoiceName().toStdString();
+}
+```
+
+---
+
+# Type-erased parameters
+
+<v-clicks>
+
+## Pros
+
+- Full type safety
+- Easy access to singular parameters
+- We can use any serialization format we like
+- Serialization code can be reused for presets
+- Easy UI attachments
+- Possibility to add UI state serialization
+- Automatic serialization of all parameters
+- Easy to add new operations on all parameters
+- Space-efficient
+
+## Cons
+
+- Reading/debugging difficulty
+
+</v-clicks>
+
+---
+
+TODO
 
 ---
 
