@@ -149,45 +149,6 @@ PluginEditor --> Parameters
  <!-- As an example, let's consider a plugin's volume, also called the gain. It can be represented as a floating-point value in the [0, 1] range that scales the plugin's output. 1 means no change in volume, and 0 means complete silence. Let's take a look at the requirements of such a parameter: -->
 
 ---
-hide: true
----
-
-# Gain parameter requirements
-
-<v-clicks>
-
-- it controls the volume of the sound output by the plugin
-- it must be displayed in the UI
-- it must be reported to the host to meet its requirements (requirement of plugin APIs)
-- it can be adjusted by the user via a slider in the plugin's UI
-- it can be adjusted by the user in host's automation view
-- it must be persisted between DAW project reloads
-- it should be easy to serialize for user presets
-- it's access must be real-time-safe (read/written on the audio thread, updated on the UI thread)
-
-</v-clicks>
-
----
-hide: true
----
-
-# Recap
-
-<v-clicks>
-
-- **audio plugin**: a plugin for a digital audio workstation (DAW)
-- **plugin processor**: the core of an audio plugin; responsible for plugin metadata, audio processing, and state management
-- **plugin editor**: user interface (UI) of the plugin
-- **plugin parameter**: a user-controllable value influencing audio processing of a plugin
-    - `juce::AudioParameterFloat|Bool|Int|Choice` class instance in JUCE plugins
-- **UI state**: non-audio-related state
-- **serialization**: process of externalizing state (for example, to a JSON file)
-- **deserialization**: process of loading state from an external source (for example, a JSON file)
-- **preset** = plugin parameter values + metadata
-
-</v-clicks>
-
----
 
 # Parameter class hierarchy in JUCE
 
@@ -372,7 +333,7 @@ void PluginProcessor::setStateInformation(const void* data, int sizeInBytes) {
 }
 ```
 
- <!-- JUCE provides `setStateInformation()` and `getStateInformation()` callbacks in the PluginProcessor to allows reading and writing plugin state (incl. parameters). serialize() hides the complexity -->
+ <!-- JUCE provides `setStateInformation()` and `getStateInformation()` callbacks in the PluginProcessor to allows reading and writing plugin state (incl. parameters). -->
 
 ---
 
@@ -421,7 +382,7 @@ std::vector<IdAndValue> serializedParameters;
 ## Serialization
 
 ```cpp
-std::vector<IdAndValue> serialize(juce::OutputStream& output, const juce::AudioParameterFloat& gain) {
+std::vector<IdAndValue> serializeParameters(juce::OutputStream& output, const juce::AudioParameterFloat& gain) {
     return {
         { .id = gain.getParameterID.toStdString(), .value = gain.get() }
     };
@@ -435,7 +396,7 @@ std::vector<IdAndValue> serialize(juce::OutputStream& output, const juce::AudioP
 ## Serialization
 
 ```cpp
-std::vector<IdAndValue> serialize(juce::OutputStream& output,
+std::vector<IdAndValue> serializeParameters(juce::OutputStream& output,
     const juce::AudioParameterFloat& floatParam,
     const juce::AudioParameterInt& intParam,
     const juce::AudioParameterBool& boolParam,
@@ -552,7 +513,7 @@ public:
 # Parameters via a vector of base class pointers
 
 ```cpp {all|8}
-std::vector<IdAndValue> serialize(juce::OutputStream& output, std::vector<juce::RangedAudioParameter*> parameters) {
+std::vector<IdAndValue> serializeParameters(juce::OutputStream& output, std::vector<juce::RangedAudioParameter*> parameters) {
     return
         parameters
             | std::views::transform(
@@ -882,7 +843,7 @@ private:
 # Serialization
 
 ```cpp {all}
-std::vector<IdAndValue> serialize(juce::OutputStream& output, const std::vector<TypeErasedParameter>& parameters) {
+std::vector<IdAndValue> serializeParameters(juce::OutputStream& output, const std::vector<TypeErasedParameter>& parameters) {
     return
         parameters
             | std::views::transform(
@@ -892,6 +853,14 @@ std::vector<IdAndValue> serialize(juce::OutputStream& output, const std::vector<
             | std::ranges::to<std::vector>();
 }
 ```
+
+<v-clicks>
+
+`TypeErasedParameter` and `seralizeParameters()` don't depend on any JUCE class anymore!
+
+The only requirement for type `T` contained in `TypeErasedParameter` is the presence of the `serializeToJson(T const&)` overload.
+
+</v-clicks>
 
 <!-- Each new operation requires adding 3 functions. Cannot we streamline it? -->
 
@@ -1045,6 +1014,31 @@ private:
 ```
 
 <!-- So you can still access individual parameters, but now you can also perform operations on all of them easily (maintaining type safety). -->
+
+---
+
+# Type-erased parameters
+
+<v-clicks>
+
+## Pros
+
+- Full type safety
+- Easy access to singular parameters
+    - `processBlock()`
+    - `PluginEditor`
+- We can use any serialization format we like
+- Serialization code can be reused for presets
+- Easy UI attachments
+- Possibility to add UI state serialization
+- **Automatic serialization of all parameters**
+- (if using Visitor) Easy to add new operations on all parameters
+
+## Cons
+
+- We need to store an additional vector
+
+</v-clicks>
 
 ---
 
