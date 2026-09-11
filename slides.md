@@ -28,17 +28,9 @@ fonts:
   sans: Montserrat, Open Sans
   mono: CaskaydiaCove Nerd Font
   local: CaskaydiaCove Nerd Font
+layout: image
+image: /assets/CppConTitleCard.png
 ---
-
-# Using Type Erasure to Extend APIs You Don't Own
-
-## A Case Study From Audio Plugin Development
-
-### Jan Wilczek (think-cell)
-
-The Dutch C++ Group Meetup
-
-Amsterdam, September 4th, 2026
 
 ---
 
@@ -53,7 +45,7 @@ Amsterdam, September 4th, 2026
 </v-clicks>
 
 ---
-layout: cover
+layout: image
 ---
 
 <img src="./assets/tc_homepage_hero.webp" class="w-full h-full"/>
