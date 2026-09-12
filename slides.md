@@ -1128,7 +1128,7 @@ https://github.com/think-cell/think-cell-library/blob/main/tc/base/ref.h#L113
 
 </v-click>
 
-<!-- We can use function_ref, because the parameter is guaranteed to outlive the type erasure wrapper. Also available in the think-cell library if your compiler doesn't yet support it (MSVC and AppleClang still don't). And speaking of the think-cell library... -->
+<!-- We can use function_ref, because the parameter is guaranteed to outlive the type erasure wrapper. In C++ 26, we also got std::copyable_function, which is also type-erased. Also available in the think-cell library if your compiler doesn't yet support it (MSVC and AppleClang still don't). And speaking of the think-cell library... -->
 
 ---
 
@@ -1295,65 +1295,6 @@ std::vector<std::variant<float,int,bool,std::string>> parameterIdsAndValues(
 </v-clicks>
 
 ---
-layout: center
----
-
-# An aside: the other use of type erasure
-
-<!-- I really have no good segway to this... -->
-
----
-
-# Classic Type Erasure: `std::function`
-
-https://godbolt.org/z/ah1MK787T
-
-```cpp {all|1-3|4-9,11|12-13|15-21}
-int invoke(std::function<int(int)> f) {
-    return f(31);
-}
-namespace {
-int g_n = 42;
-}
-int addGlobal(int n) {
-    return g_n + n;
-}
-int main() {
-    std::println("{}", invoke(addGlobal));
-    auto data = 42;
-    std::println("{}", invoke([&data](int n) { return n + data; }));
-
-    struct Functor {
-        int m_n;
-        int operator()(int n) {
-            return m_n + n;
-        }
-    };
-    std::println("{}", invoke(Functor{42}));
-}
-```
-
-<!-- std::function works with all possible function-like inputs, including functions referencing global data, local data, lambdas, and functors. No templates! -->
-
----
-
-# C++ function wrappers
-
-- `std::function` (C++ 11)
-- `std::move_only_function` (C++ 23)
-- `std::copyable_function` (C++ 26)
-- `std::function_ref` (C++ 26)
-
-<v-click>
-
-`tc::function_ref`:
-https://github.com/think-cell/think-cell-library/blob/main/tc/base/ref.h#L113
-
-</v-click>
-
-<!-- Also available in the think-cell library if your compiler doesn't yet support it (MSVC and AppleClang still don't). -->
-
----
 
 # Conclusion
 
@@ -1373,7 +1314,6 @@ https://github.com/think-cell/think-cell-library/blob/main/tc/base/ref.h#L113
 # References
 
 <v-clicks>
-
 
 1. `TypeErasedParameter` with example serialization,  https://github.com/JanWilczek/wolfsound-dsp-utils
     - *src/include/wolfsound/juce/wolfsound_ParameterHolder.hpp*
