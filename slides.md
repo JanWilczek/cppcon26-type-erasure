@@ -1103,6 +1103,21 @@ private:
     std::function<ParameterIdAndValue()> serializer;
 };
 ```
+```cpp
+class AnyParameter {
+public:
+    template <typename T>
+    AnyParameter(const T& parameterRef)
+        : serializer{[&]() -> ParameterIdAndValue {
+              return serializeImpl(parameterRef);
+          }} {}
+
+    IdAndValue serialize() const { return serializer(); }
+
+private:
+    std::copyable_function<ParameterIdAndValue()> serializer; // C++ 26
+};
+```
 ````
 
 <!-- A similar technique is used in our library's `any_range_ref` -->
