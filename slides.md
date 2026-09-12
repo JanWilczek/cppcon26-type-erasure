@@ -819,8 +819,8 @@ private:
 };
 ```
 ```cpp {1-3,7,12,18}
-IdAndValue serialize(juce::AudioParameterFloat& p);
-IdAndValue serialize(juce::AudioParameterBool& p);
+IdAndValue serializeImpl(juce::AudioParameterFloat& p);
+IdAndValue serializeImpl(juce::AudioParameterBool& p);
 //...
 class TypeErasedParameter {
 public:
@@ -836,7 +836,7 @@ private:
     class ParameterModel : public ParameterConcept {
     public:
         //...
-        IdAndValue serialize() override { return serialize(_p); }
+        IdAndValue serialize() override { return serializeImpl(_p); }
 
     private:
         Parameter& _p;
@@ -852,12 +852,12 @@ private:
 
 ```cpp {1-4|6-10}
 template <typename T>
-ParameterIdAndValue serialize(const T& parameter) {
+ParameterIdAndValue serializeImpl(const T& parameter) {
   return { parameter.getParameterID().toStdString(), parameter.get() };
 }
 
 template <>
-ParameterIdAndValue serialize<juce::AudioParameterChoice>(const juce::AudioParameterChoice& parameter) {
+ParameterIdAndValue serializeImpl<juce::AudioParameterChoice>(const juce::AudioParameterChoice& parameter) {
   return { parameter.getParameterID().toStdString(), parameter.getCurrentChoiceName().toStdString() };
 }
 ```
@@ -872,7 +872,7 @@ std::vector<IdAndValue> serializeParameters(juce::OutputStream& output,
     return
         parameters
             | std::views::transform(
-                [](auto const* p) { return p->serialize(); })
+                [](const auto& p) { return p.serialize(); })
             | std::ranges::to<std::vector>();
 }
 ```
@@ -1040,27 +1040,27 @@ private:
 
 ---
 
-# Type-erased parameter using `std::any`
+# Type-erased parameter leveraging STL
 
-```cpp
-IdAndValue serialize(juce::AudioParameterFloat& p);
-IdAndValue serialize(juce::AudioParameterBool& p);
+```cpp {all|1-2|17-18|6-7|8,17|9-12,18|10|11|14}
+IdAndValue serializeImpl(juce::AudioParameterFloat& p);
+IdAndValue serializeImpl(juce::AudioParameterBool& p);
 // ...
 class AnyParameter {
 public:
     template <typename T>
-    AnyParameter(T& parameterRef)
+    AnyParameter(const T& parameterRef)
         : parameterPtr{&parameterRef},
-          serializer{[]() -> IdAndValue {
-              auto ptr = std::any_cast<T*>(parameterPtr);
-              return serialize(*ptr);
+          serializer{[&]() -> ParameterIdAndValue {
+              auto ptr = std::any_cast<const T*>(parameterPtr); // reification
+              return serializeImpl(*ptr);
           }} {}
 
-    IdAndValue serialize() { return serializer(); }
+    IdAndValue serialize() const { return serializer(); }
 
 private:
     std::any parameterPtr;
-    std::function<IdAndValue()> serializer;
+    std::function<ParameterIdAndValue()> serializer;
 };
 ```
 
@@ -1068,7 +1068,67 @@ private:
 
 ---
 
-TODO: tc::any_ref
+# Type-erased parameter leveraging STL
+
+````md magic-move
+```cpp
+class AnyParameter {
+public:
+    template <typename T>
+    AnyParameter(const T& parameterRef)
+        : parameterPtr{&parameterRef},
+          serializer{[&]() -> ParameterIdAndValue {
+              auto ptr = std::any_cast<const T*>(parameterPtr); // reification
+              return serializeImpl(*ptr);
+          }} {}
+
+    IdAndValue serialize() const { return serializer(); }
+
+private:
+    std::any parameterPtr;
+    std::function<ParameterIdAndValue()> serializer;
+};
+```
+```cpp
+class AnyParameter {
+public:
+    template <typename T>
+    AnyParameter(const T& parameterRef)
+        : serializer{[&]() -> ParameterIdAndValue {
+              return serializeImpl(parameterRef);
+          }} {}
+
+    IdAndValue serialize() const { return serializer(); }
+
+private:
+    std::function<ParameterIdAndValue()> serializer;
+};
+```
+```cpp
+class AnyParameter {
+public:
+    template <typename T>
+    AnyParameter(const T& parameterRef)
+        : serializer{[&]() -> ParameterIdAndValue {
+              return serializeImpl(parameterRef);
+          }} {}
+
+    IdAndValue serialize() const { return serializer(); }
+
+private:
+    std::function_ref<ParameterIdAndValue()> serializer; // C++ 26
+};
+```
+````
+
+<v-click>
+
+`tc::function_ref`:
+https://github.com/think-cell/think-cell-library/blob/main/tc/base/ref.h#L113
+
+</v-click>
+
+<!-- We can use function_ref, because the parameter is guaranteed to outlive the type erasure wrapper. Also available in the think-cell library if your compiler doesn't yet support it (MSVC and AppleClang still don't). And speaking of the think-cell library... -->
 
 ---
 
@@ -1080,8 +1140,8 @@ struct any_range_ref {
     template <typename Rng>
     any_range_ref(Rng&& rng) noexcept
         : m_pfuncTypeErased(
-            [](tc::no_adl::any_ref anyrefRng,
-               tc::no_adl::function_ref<tc::break_or_continue (T) noexcept> fn) noexcept -> tc::break_or_continue {
+            [](tc::any_ref anyrefRng,
+               tc::function_ref<tc::break_or_continue (T) noexcept> fn) noexcept -> tc::break_or_continue {
                 return tc::for_each(anyrefRng.get_ref<std::remove_reference_t<Rng>>(), fn);
             }
         )
@@ -1089,15 +1149,15 @@ struct any_range_ref {
     {}
 
     tc::break_or_continue
-    operator()(tc::no_adl::function_ref<tc::break_or_continue (T) noexcept> fn) const& noexcept {
+    operator()(tc::function_ref<tc::break_or_continue (T) noexcept> fn) const& noexcept {
         return m_pfuncTypeErased(m_anyrefRng, fn);
     }
 
 private:
-    tc::no_adl::type_erased_function_ptr<
-        /*bNoExcept*/true, tc::break_or_continue, tc::no_adl::function_ref<tc::break_or_continue (T) noexcept>>
+    tc::type_erased_function_ptr<
+        /*bNoExcept*/true, tc::break_or_continue, tc::function_ref<tc::break_or_continue (T) noexcept>>
             m_pfuncTypeErased;
-    tc::no_adl::any_ref m_anyrefRng;
+    tc::any_ref m_anyrefRng;
 };
 ```
 
@@ -1114,7 +1174,7 @@ assert("0, 1, 2, 3, 4, 5" == (stringify_concat(std::vector<int>{0, 1, 2, 3, 4, 5
 assert("0, 1, 2, 3, 4, 5" == (stringify_concat(std::list<int>{0, 1, 2, 3, 4, 5})));
 ```
 
-<!-- In this example, we cannot use a `span` as the argument, because `list` is not contiguous. -->
+<!-- In this example, we cannot use a `span` as the argument, because `list` is not contiguous. No templates, no polymorphism. -->
 
 
 ---
@@ -1190,8 +1250,8 @@ std::get<choiceParam>(processor.parameters).getCurrentChoiceName();
 ## Serialization
 
 ```cpp {1-2|4-7|8|10,16|11-15|12-15}
-IdAndValue serialize(juce::AudioParameterFloat& p);
-IdAndValue serialize(juce::AudioParameterBool& p);
+IdAndValue serializeImpl(juce::AudioParameterFloat& p);
+IdAndValue serializeImpl(juce::AudioParameterBool& p);
 //...
 template <typename... Ts>
 std::vector<std::variant<float,int,bool,std::string>> parameterIdsAndValues(
@@ -1201,7 +1261,7 @@ std::vector<std::variant<float,int,bool,std::string>> parameterIdsAndValues(
   std::apply(
       [&result](const Ts&... parameterRefs) {
         (
-            (result.emplace_back(serialize(parameterRefs))),
+            (result.emplace_back(serializeImpl(parameterRefs))),
         ...);
       },
       parameters);
