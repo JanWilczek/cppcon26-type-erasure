@@ -1103,31 +1103,9 @@ private:
     std::function<ParameterIdAndValue()> serializer;
 };
 ```
-```cpp
-class AnyParameter {
-public:
-    template <typename T>
-    AnyParameter(const T& parameterRef)
-        : serializer{[&]() -> ParameterIdAndValue {
-              return serializeImpl(parameterRef);
-          }} {}
-
-    IdAndValue serialize() const { return serializer(); }
-
-private:
-    std::function_ref<ParameterIdAndValue()> serializer; // C++ 26
-};
-```
 ````
 
-<v-click>
-
-`tc::function_ref`:
-https://github.com/think-cell/think-cell-library/blob/main/tc/base/ref.h#L113
-
-</v-click>
-
-<!-- We can use function_ref, because the parameter is guaranteed to outlive the type erasure wrapper. In C++ 26, we also got std::copyable_function, which is also type-erased. Also available in the think-cell library if your compiler doesn't yet support it (MSVC and AppleClang still don't). And speaking of the think-cell library... -->
+<!-- A similar technique is used in our library's `any_range_ref` -->
 
 ---
 
@@ -1173,8 +1151,14 @@ assert("0, 1, 2, 3, 4, 5" == (stringify_concat(std::vector<int>{0, 1, 2, 3, 4, 5
 assert("0, 1, 2, 3, 4, 5" == (stringify_concat(std::list<int>{0, 1, 2, 3, 4, 5})));
 ```
 
-<!-- In this example, we cannot use a `span` as the argument, because `list` is not contiguous. No templates, no polymorphism. -->
+<v-click>
 
+`tc::function_ref`:
+https://github.com/think-cell/think-cell-library/blob/main/tc/base/ref.h#L113
+
+</v-click>
+
+<!-- In this example, we cannot use a `span` as the argument, because `list` is not contiguous. No templates, no polymorphism. If your compiler doesn't yet support std::function_ref, we have an implementation available -->
 
 ---
 
