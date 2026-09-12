@@ -224,9 +224,9 @@ public:
   void getStateInformation(MemoryBlock& destData) override;
   void setStateInformation(const void* data, int sizeInBytes) override;
 
-private:
   juce::AudioParameterFloat& gain;
 
+private:
   JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(PluginProcessor)
 };
 ```
@@ -239,9 +239,9 @@ private:
 class PluginProcessor : public juce::AudioProcessor {
 public:
     PluginProcessor();
-    //...
-private:
+
     juce::AudioParameterFloat& gain;
+
     //...
 };
 ```
@@ -391,9 +391,9 @@ struct IdAndValue {
 ## Serialization
 
 ```cpp
-std::vector<IdAndValue> serializeParameters(juce::OutputStream& output, const juce::AudioParameterFloat& gain) {
+std::vector<IdAndValue> serializeParameters(const juce::AudioParameterFloat& gain) {
     return {
-        { .id = gain.getParameterID.toStdString(), .value = gain.get() }
+        { .id = gain.getParameterID().toStdString(), .value = gain.get() }
     };
 }
 ```
@@ -405,17 +405,18 @@ std::vector<IdAndValue> serializeParameters(juce::OutputStream& output, const ju
 ## Serialization
 
 ```cpp
-std::vector<IdAndValue> serializeParameters(juce::OutputStream& output,
+std::vector<IdAndValue> serializeParameters(
     const juce::AudioParameterFloat& floatParam,
     const juce::AudioParameterInt& intParam,
     const juce::AudioParameterBool& boolParam,
     const juce::AudioParameterChoice& choiceParam) {
 
     return {
-        { .id = floatParam.getParameterID.toStdString(),  .value = floatParam.get() }
-        { .id = intParam.getParameterID.toStdString(),    .value = intParam.get() }
-        { .id = boolParam.getParameterID.toStdString(),   .value = boolParam.get() }
-        { .id = choiceParam.getParameterID.toStdString(), .value = choiceParam.getCurrentChoiceName() } // 👈
+        { .id = floatParam.getParameterID().toStdString(),  .value = floatParam.get() }
+        { .id = intParam.getParameterID().toStdString(),    .value = intParam.get() }
+        { .id = boolParam.getParameterID().toStdString(),   .value = boolParam.get() }
+        { .id = choiceParam.getParameterID().toStdString(),
+          .value = choiceParam.getCurrentChoiceName().toStdString() } // 👈
     };
 }
 ```
@@ -521,9 +522,8 @@ public:
 
 # Parameters via a vector of base class pointers
 
-```cpp {all|9}
-std::vector<IdAndValue> serializeParameters(juce::OutputStream& output,
-                                            const std::vector<juce::RangedAudioParameter*>& parameters) {
+```cpp {all|8}
+std::vector<IdAndValue> serializeParameters(const std::vector<juce::RangedAudioParameter*>& parameters) {
     return
         parameters
             | std::views::transform(
@@ -618,7 +618,7 @@ std::vector<IdAndValue> serializeParameters(juce::OutputStream& output,
 
 - ~~change JUCE~~
 - `dynamic_cast` on `std::vector<juce::RangedAudioParameter*>` elements?
-    - verbose, error-prone, not general
+    - verbose, error-prone, slow, not general
 - `std::vector<std::variant<juce::AudioParameterFloat*, juce::AudioParameterInt*, juce::AudioParameterBool*, juce::AudioParameterChoice*>>`
     - limits the set of supported parameter types
 - Extending each `juce::AudioParameter_` class with a base class controlled by us
@@ -768,8 +768,8 @@ std::vector<TypeErasedParameter> parameters;
 
 ````md magic-move
 ```cpp {1-3|all}
-ReturnType foo(juce::AudioParameterFloat& p);
-ReturnType foo(juce::AudioParameterBool& p);
+ReturnType fooImpl(juce::AudioParameterFloat& p);
+ReturnType fooImpl(juce::AudioParameterBool& p);
 //...
 class TypeErasedParameter {
 public:
@@ -793,8 +793,8 @@ private:
 };
 ```
 ```cpp {all|1-3,7,12,18}
-ReturnType foo(juce::AudioParameterFloat& p);
-ReturnType foo(juce::AudioParameterBool& p);
+ReturnType fooImpl(juce::AudioParameterFloat& p);
+ReturnType fooImpl(juce::AudioParameterBool& p);
 //...
 class TypeErasedParameter {
 public:
@@ -810,7 +810,7 @@ private:
     class ParameterModel : public ParameterConcept {
     public:
         //...
-        ReturnType foo() override { return foo(_p); }
+        ReturnType foo() override { return fooImpl(_p); }
 
     private:
         Parameter& _p;
@@ -825,18 +825,18 @@ IdAndValue serializeImpl(juce::AudioParameterBool& p);
 class TypeErasedParameter {
 public:
     //...
-    IdAndValue serialize() { return _impl->serialize(); }
+    IdAndValue serialize() const { return _impl->serialize(); }
 private:
     class ParameterConcept {
     public:
         virtual ~ParameterConcept() = default;
-        virtual IdAndValue serialize() = 0;
+        virtual IdAndValue serialize() const = 0;
     };
     template <class Parameter>
     class ParameterModel : public ParameterConcept {
     public:
         //...
-        IdAndValue serialize() override { return serializeImpl(_p); }
+        IdAndValue serialize() const override { return serializeImpl(_p); }
 
     private:
         Parameter& _p;
@@ -867,8 +867,7 @@ ParameterIdAndValue serializeImpl<juce::AudioParameterChoice>(const juce::AudioP
 # Serialization
 
 ```cpp
-std::vector<IdAndValue> serializeParameters(juce::OutputStream& output,
-                                            const std::vector<TypeErasedParameter>& parameters) {
+std::vector<IdAndValue> serializeParameters(const std::vector<TypeErasedParameter>& parameters) {
     return
         parameters
             | std::views::transform(
@@ -881,7 +880,7 @@ std::vector<IdAndValue> serializeParameters(juce::OutputStream& output,
 
 `TypeErasedParameter` and `seralizeParameters()` don't depend on any JUCE class anymore!
 
-The only requirement for type `T` contained in `TypeErasedParameter` is the presence of the `serializeToJson(T const&)` overload.
+The only requirement for type `T` contained in `TypeErasedParameter` is the presence of the `serializeImpl(T const&)` overload.
 
 </v-clicks>
 
@@ -982,7 +981,7 @@ std::vector<TypeErasedParameter> parameters;
 
 # Builder
 
-```cpp {all|20|21|3-4|5|6|7,21|9|8,20|12-17|13-15,20|16,21|12|all}
+```cpp {all|20|21|3-4|5|6|7,21|8,20|9|12-17|13-15,20|16,21|12|all}
 class ParameterBuilder {
 public:
     template <class P, class... Args>
@@ -1249,14 +1248,14 @@ std::get<choiceParam>(processor.parameters).getCurrentChoiceName();
 
 ## Serialization
 
-```cpp {1-2|4-7|8|10,16|11-15|12-15}
+```cpp {1-2|4-6|7|9,15|10-14|11-13}
 IdAndValue serializeImpl(juce::AudioParameterFloat& p);
 IdAndValue serializeImpl(juce::AudioParameterBool& p);
 //...
 template <typename... Ts>
 std::vector<std::variant<float,int,bool,std::string>> parameterIdsAndValues(
     const std::tuple<Ts...>& parameters) {
-  std::vector<std::variant<float,int,bool,std::string>> result;
+  std::vector<IdAndValue> result;
 
   std::apply(
       [&result](const Ts&... parameterRefs) {
@@ -1324,7 +1323,7 @@ std::vector<std::variant<float,int,bool,std::string>> parameterIdsAndValues(
 1. Sean Parent, *Inheritance Is the Base Class of Evil*, GoingNative 2013
 1. Klaus Iglberger, *C++ Software Design: Design Principles and Patterns for High-Quality Software*, O'Reilly 2022
 1. Jan Wilczek & the JUCE team, *Official JUCE Audio Plugin Development Online Course*, [*https://wolfsoundacademy.com/juce*](https://wolfsoundacademy.com/juce) (available for free)
-1. Thanks to Daniel Lunow, Valentin Ziegler, and Roger Grau for helping me prepare this talk
+1. Thanks to Daniel Lunow, Valentin Ziegler, and Roger Porta for helping me prepare this talk
 
 </v-clicks>
 
