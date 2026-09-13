@@ -366,7 +366,7 @@ juce::AudioParameterFloat& gain; // value: 1.f
 // ⬇️
 struct IdAndValue {
     std::string id; // "gain"
-    float value;    // 1.f
+    std::variant<float,int,bool,std::string> value;    // 1.f
 };
 // ⬇️
 ```
@@ -466,7 +466,7 @@ std::vector<IdAndValue> serializeParameters(
 ## Cons
 
 - "Manual" serialization code
-    - Adding new parameters requires updating `serializeToJson` $\implies$ error-prone
+    - Adding new parameters requires updating `serializeParameters()` $\implies$ error-prone
 
 </v-clicks>
 
@@ -852,12 +852,12 @@ private:
 
 ```cpp {1-4|6-10}
 template <typename T>
-ParameterIdAndValue serializeImpl(const T& parameter) {
+IdAndValue serializeImpl(const T& parameter) {
   return { parameter.getParameterID().toStdString(), parameter.get() };
 }
 
 template <>
-ParameterIdAndValue serializeImpl<juce::AudioParameterChoice>(const juce::AudioParameterChoice& parameter) {
+IdAndValue serializeImpl<juce::AudioParameterChoice>(const juce::AudioParameterChoice& parameter) {
   return { parameter.getParameterID().toStdString(), parameter.getCurrentChoiceName().toStdString() };
 }
 ```
@@ -1050,7 +1050,7 @@ public:
     template <typename T>
     AnyParameter(const T& parameterRef)
         : parameterPtr{&parameterRef},
-          serializer{[&]() -> ParameterIdAndValue {
+          serializer{[&]() -> IdAndValue {
               auto ptr = std::any_cast<const T*>(parameterPtr); // reification
               return serializeImpl(*ptr);
           }} {}
@@ -1059,7 +1059,7 @@ public:
 
 private:
     std::any parameterPtr;
-    std::function<ParameterIdAndValue()> serializer;
+    std::function<IdAndValue()> serializer;
 };
 ```
 
@@ -1076,7 +1076,7 @@ public:
     template <typename T>
     AnyParameter(const T& parameterRef)
         : parameterPtr{&parameterRef},
-          serializer{[&]() -> ParameterIdAndValue {
+          serializer{[&]() -> IdAndValue {
               auto ptr = std::any_cast<const T*>(parameterPtr); // reification
               return serializeImpl(*ptr);
           }} {}
@@ -1085,7 +1085,7 @@ public:
 
 private:
     std::any parameterPtr;
-    std::function<ParameterIdAndValue()> serializer;
+    std::function<IdAndValue()> serializer;
 };
 ```
 ```cpp
@@ -1093,14 +1093,14 @@ class AnyParameter {
 public:
     template <typename T>
     AnyParameter(const T& parameterRef)
-        : serializer{[&]() -> ParameterIdAndValue {
+        : serializer{[&]() -> IdAndValue {
               return serializeImpl(parameterRef);
           }} {}
 
     IdAndValue serialize() const { return serializer(); }
 
 private:
-    std::function<ParameterIdAndValue()> serializer;
+    std::function<IdAndValue()> serializer;
 };
 ```
 ```cpp
@@ -1108,14 +1108,14 @@ class AnyParameter {
 public:
     template <typename T>
     AnyParameter(const T& parameterRef)
-        : serializer{[&]() -> ParameterIdAndValue {
+        : serializer{[&]() -> IdAndValue {
               return serializeImpl(parameterRef);
           }} {}
 
     IdAndValue serialize() const { return serializer(); }
 
 private:
-    std::copyable_function<ParameterIdAndValue()> serializer; // C++ 26
+    std::copyable_function<IdAndValue()> serializer; // C++ 26
 };
 ```
 ````
@@ -1168,8 +1168,8 @@ assert("0, 1, 2, 3, 4, 5" == (stringify_concat(std::list<int>{0, 1, 2, 3, 4, 5})
 
 <v-click>
 
-`tc::function_ref`:
-https://github.com/think-cell/think-cell-library/blob/main/tc/base/ref.h#L113
+`tc::any_range_ref`, `tc::function_ref`:
+https://github.com/think-cell/think-cell-library/blob/main/tc/base/ref.h
 
 </v-click>
 
@@ -1202,16 +1202,13 @@ https://github.com/think-cell/think-cell-library/blob/main/tc/base/ref.h#L113
 
 # Tuple with parameter references
 
-```cpp {all|1-2|5-6|10-18}
+```cpp {all|1-2|17-18|7-15}
 template <typename Parameter, typename... Args>
 Parameter& createAndAddParameter(juce::AudioProcessor& processor, Args&&... args) { /* ... */ }
 
 class PluginProcessor : public juce::AudioProcessor {
-  std::tuple<juce::AudioParameterFloat&, juce::AudioParameterBool&,
-    juce::AudioParameterInt&, juce::AudioParameterChoice&> parameters;
-
 public:
-  PluginProcessorWithParameterTuple()
+  PluginProcessor()
       : parameters{createAndAddParameter<juce::AudioParameterFloat>(
                         *this, "floatParam", "Float Param", juce::NormalisableRange{1.f, 10.f}, 5.f),
                    createAndAddParameter<juce::AudioParameterBool>(
@@ -1221,6 +1218,9 @@ public:
                    createAndAddParameter<juce::AudioParameterChoice>(
                         *this, "choiceParam", "Choice Param",
                         juce::StringArray{"choice 0", "choice 1", "choice 2"}, 1)} {}
+
+  std::tuple<juce::AudioParameterFloat&, juce::AudioParameterBool&,
+    juce::AudioParameterInt&, juce::AudioParameterChoice&> parameters;
 };
 ```
 
@@ -1247,19 +1247,18 @@ std::get<choiceParam>(processor.parameters).getCurrentChoiceName();
 
 ## Serialization
 
-```cpp {1-2|4-6|7|9,15|10-14|11-13}
+```cpp {1-2|4-5|6|8,14|9-13|10-12}
 IdAndValue serializeImpl(juce::AudioParameterFloat& p);
 IdAndValue serializeImpl(juce::AudioParameterBool& p);
 //...
 template <typename... Ts>
-std::vector<std::variant<float,int,bool,std::string>> parameterIdsAndValues(
-    const std::tuple<Ts...>& parameters) {
+std::vector<IdAndValue> serializeParameters(const std::tuple<Ts...>& parameters) {
   std::vector<IdAndValue> result;
 
   std::apply(
       [&result](const Ts&... parameterRefs) {
         (
-            (result.emplace_back(serializeImpl(parameterRefs))),
+            (result.push_back(serializeImpl(parameterRefs))),
         ...);
       },
       parameters);
@@ -1321,6 +1320,7 @@ std::vector<std::variant<float,int,bool,std::string>> parameterIdsAndValues(
 1. Kevlin Henney, *Valued Conversions*, *C++ Report* July-August 2000
 1. Sean Parent, *Inheritance Is the Base Class of Evil*, GoingNative 2013
 1. Klaus Iglberger, *C++ Software Design: Design Principles and Patterns for High-Quality Software*, O'Reilly 2022
+1. Fedor Pikus, *C++ Type Erasure Demystified*, C++Now 2024
 1. Jan Wilczek & the JUCE team, *Official JUCE Audio Plugin Development Online Course*, [*https://wolfsoundacademy.com/juce*](https://wolfsoundacademy.com/juce) (available for free)
 1. Thanks to Daniel Lunow, Valentin Ziegler, and Roger Porta for helping me prepare this talk
 
