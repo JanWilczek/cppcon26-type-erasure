@@ -1049,17 +1049,17 @@ class AnyParameter {
 public:
     template <typename T>
     AnyParameter(const T& parameterRef)
-        : parameterPtr{&parameterRef},
-          serializer{[&]() -> IdAndValue {
-              auto ptr = std::any_cast<const T*>(parameterPtr); // reification
-              return serializeImpl(*ptr);
+        : parameterPtr{std::addressof(parameterRef)},
+          serializer{[](std::any ptr) -> IdAndValue {
+              auto typedPtr = std::any_cast<const T*>(ptr); // reification
+              return serializeImpl(*typedPtr);
           }} {}
 
-    IdAndValue serialize() const { return serializer(); }
+    IdAndValue serialize() const { return serializer(parameterPtr); }
 
 private:
     std::any parameterPtr;
-    std::function<IdAndValue()> serializer;
+    IdAndValue (*serializer)(std::any);
 };
 ```
 
@@ -1075,17 +1075,35 @@ class AnyParameter {
 public:
     template <typename T>
     AnyParameter(const T& parameterRef)
-        : parameterPtr{&parameterRef},
-          serializer{[&]() -> IdAndValue {
-              auto ptr = std::any_cast<const T*>(parameterPtr); // reification
-              return serializeImpl(*ptr);
+        : parameterPtr{std::addressof(parameterRef)},
+          serializer{[](std::any ptr) -> IdAndValue {
+              auto typedPtr = std::any_cast<const T*>(ptr); // reification
+              return serializeImpl(*typedPtr);
+          }} {}
+
+    IdAndValue serialize() const { return serializer(parameterPtr); }
+
+private:
+    std::any parameterPtr;
+    IdAndValue (*serializer)(std::any);
+};
+```
+```cpp
+class AnyParameter {
+public:
+    template <typename T>
+    AnyParameter(const T& parameterRef)
+        : parameterPtr{std::addressof(parameterRef)},
+          serializer{[](std::any ptr) -> IdAndValue {
+              auto typedPtr = std::any_cast<const T*>(ptr); // reification
+              return serializeImpl(*typedPtr);
           }} {}
 
     IdAndValue serialize() const { return serializer(); }
 
 private:
     std::any parameterPtr;
-    std::function<IdAndValue()> serializer;
+    std::function<IdAndValue(std::any)> serializer;
 };
 ```
 ```cpp
