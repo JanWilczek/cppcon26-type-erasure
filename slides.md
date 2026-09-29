@@ -2,7 +2,7 @@
 theme: default
 colorSchema: light
 title: Using Type Erasure to Extend APIs You Don't Own
-titleTemplate: '%s - Jan Wilczek Meetup Amsterdam Sep 4 2026'
+titleTemplate: '%s - Jan Wilczek Meetup Munich Sep 29 2026'
 info: |
   ## Using Type Erasure to Extend APIs You Don't Own
 
@@ -28,9 +28,15 @@ fonts:
   sans: Montserrat, Open Sans
   mono: CaskaydiaCove Nerd Font
   local: CaskaydiaCove Nerd Font
-layout: image
-image: /assets/CppConTitleCard.png
 ---
+
+# Using Type Erasure to Extend APIs You Don't Own
+
+## A Case Study From Audio Plugin Development
+
+Jan Wilczek (thinkcell)
+
+Munich, September 29, 2026
 
 ---
 
@@ -45,7 +51,7 @@ image: /assets/CppConTitleCard.png
 </v-clicks>
 
 ---
-layout: image
+layout: cover
 ---
 
 <img src="./assets/tc_homepage_hero.webp" class="w-full h-full"/>
