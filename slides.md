@@ -36,7 +36,7 @@ fonts:
 
 Jan Wilczek (thinkcell)
 
-Munich, September 29, 2026
+Meeting C++, November 2026
 
 ---
 
