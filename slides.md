@@ -1105,7 +1105,7 @@ public:
               return serializeImpl(*typedPtr);
           }} {}
 
-    IdAndValue serialize() const { return serializer(); }
+    IdAndValue serialize() const { return serializer(parameterPtr); }
 
 private:
     std::any parameterPtr;
