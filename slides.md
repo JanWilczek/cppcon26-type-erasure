@@ -1139,7 +1139,7 @@ public:
     IdAndValue serialize() const { return serializer(); }
 
 private:
-    std::copyable_function<IdAndValue()> serializer; // C++ 26
+    std::copyable_function<IdAndValue() const> serializer; // C++ 26
 };
 ```
 ````
