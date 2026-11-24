@@ -825,24 +825,24 @@ private:
 };
 ```
 ```cpp {1-3,7,12,18}
-IdAndValue serializeImpl(const juce::AudioParameterFloat& p);
-IdAndValue serializeImpl(const juce::AudioParameterBool& p);
+IdAndValue serializeImpl(juce::AudioParameterFloat& p);
+IdAndValue serializeImpl(juce::AudioParameterBool& p);
 //...
 class TypeErasedParameter {
 public:
     //...
-    IdAndValue serialize() const { return _impl->serialize(); }
+    IdAndValue serialize() { return _impl->serialize(); }
 private:
     class ParameterConcept {
     public:
         virtual ~ParameterConcept() = default;
-        virtual IdAndValue serialize() const = 0;
+        virtual IdAndValue serialize() = 0;
     };
     template <class Parameter>
     class ParameterModel : public ParameterConcept {
     public:
         //...
-        IdAndValue serialize() const override { return serializeImpl(_p); }
+        IdAndValue serialize() override { return serializeImpl(_p); }
 
     private:
         Parameter& _p;
