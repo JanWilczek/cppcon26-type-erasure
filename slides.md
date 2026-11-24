@@ -413,14 +413,14 @@ std::vector<IdAndValue> serializeParameters(const juce::AudioParameterFloat& gai
 ```cpp
 std::vector<IdAndValue> serializeParameters(
     const juce::AudioParameterFloat& floatParam,
-    const juce::AudioParameterInt& intParam,
     const juce::AudioParameterBool& boolParam,
+    const juce::AudioParameterInt& intParam,
     const juce::AudioParameterChoice& choiceParam) {
 
     return {
         { .id = floatParam.getParameterID().toStdString(),  .value = floatParam.get() },
-        { .id = intParam.getParameterID().toStdString(),    .value = intParam.get() },
         { .id = boolParam.getParameterID().toStdString(),   .value = boolParam.get() },
+        { .id = intParam.getParameterID().toStdString(),    .value = intParam.get() },
         { .id = choiceParam.getParameterID().toStdString(),
           .value = choiceParam.getCurrentChoiceName().toStdString() } // 👈
     };
