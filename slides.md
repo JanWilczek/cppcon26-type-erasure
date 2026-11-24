@@ -1376,7 +1376,7 @@ public:
 
 https://github.com/JanWilczek/EdenSynth/blob/jan/parameter-reflection/EdenSynth/SharedCode_test/source/ParameterReflectionTest.cpp
 
-```cpp {all|1-2|3|5|7-8|9|10|11|12|17|all}
+```cpp {all|1-2|3|5|7-8|9|10|11|16|all}
 template <typename T>
 std::vector<IdAndValue> parameterIdsAndValues(const T& parameterHolder) {
   using namespace std::meta;
@@ -1386,8 +1386,7 @@ std::vector<IdAndValue> parameterIdsAndValues(const T& parameterHolder) {
   template for (constexpr auto member : std::define_static_array(
         nonstatic_data_members_of(^^T, access_context::current()))) {
     if constexpr (is_base_of_type(^^juce::AudioProcessorParameter, remove_reference(type_of(member)))) {
-      result.emplace_back(
-          parameterHolder.[:member:].getParameterID().toStdString(),
+      result.push_back(
           serializeImpl(parameterHolder.[:member:])
       );
     }
@@ -1405,7 +1404,9 @@ std::vector<IdAndValue> parameterIdsAndValues(const T& parameterHolder) {
 
 ## Pros
 
-- One function to rule them all
+- ...
+- Type safety
+- No need for a parameter container
 
 ## Cons
 
