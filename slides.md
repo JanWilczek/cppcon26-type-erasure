@@ -1055,17 +1055,17 @@ class AnyParameter {
 public:
     template <typename T>
     AnyParameter(const T& parameterRef)
-        : parameterPtr{std::addressof(parameterRef)},
-          serializer{[](std::any ptr) -> IdAndValue {
+        : _parameterPtr{std::addressof(parameterRef)},
+          _serializer{[](std::any ptr) -> IdAndValue {
               auto typedPtr = std::any_cast<const T*>(ptr); // reification
               return serializeImpl(*typedPtr);
           }} {}
 
-    IdAndValue serialize() const { return serializer(parameterPtr); }
+    IdAndValue serialize() const { return _serializer(_parameterPtr); }
 
 private:
-    std::any parameterPtr;
-    IdAndValue (*serializer)(std::any);
+    std::any _parameterPtr;
+    IdAndValue (*_serializer)(std::any);
 };
 ```
 
@@ -1081,17 +1081,17 @@ class AnyParameter {
 public:
     template <typename T>
     AnyParameter(const T& parameterRef)
-        : parameterPtr{std::addressof(parameterRef)},
-          serializer{[](std::any ptr) -> IdAndValue {
+        : _parameterPtr{std::addressof(parameterRef)},
+          _serializer{[](std::any ptr) -> IdAndValue {
               auto typedPtr = std::any_cast<const T*>(ptr); // reification
               return serializeImpl(*typedPtr);
           }} {}
 
-    IdAndValue serialize() const { return serializer(parameterPtr); }
+    IdAndValue serialize() const { return _serializer(_parameterPtr); }
 
 private:
-    std::any parameterPtr;
-    IdAndValue (*serializer)(std::any);
+    std::any _parameterPtr;
+    IdAndValue (*_serializer)(std::any);
 };
 ```
 ```cpp
@@ -1099,17 +1099,17 @@ class AnyParameter {
 public:
     template <typename T>
     AnyParameter(const T& parameterRef)
-        : parameterPtr{std::addressof(parameterRef)},
-          serializer{[](std::any ptr) -> IdAndValue {
+        : _parameterPtr{std::addressof(parameterRef)},
+          _serializer{[](std::any ptr) -> IdAndValue {
               auto typedPtr = std::any_cast<const T*>(ptr); // reification
               return serializeImpl(*typedPtr);
           }} {}
 
-    IdAndValue serialize() const { return serializer(parameterPtr); }
+    IdAndValue serialize() const { return _serializer(_parameterPtr); }
 
 private:
-    std::any parameterPtr;
-    std::function<IdAndValue(std::any)> serializer;
+    std::any _parameterPtr;
+    std::function<IdAndValue(std::any)> _serializer;
 };
 ```
 ```cpp
@@ -1117,14 +1117,14 @@ class AnyParameter {
 public:
     template <typename T>
     AnyParameter(const T& parameterRef)
-        : serializer{[&]() -> IdAndValue {
+        : _serializer{[&]() -> IdAndValue {
               return serializeImpl(parameterRef);
           }} {}
 
-    IdAndValue serialize() const { return serializer(); }
+    IdAndValue serialize() const { return _serializer(); }
 
 private:
-    std::function<IdAndValue()> serializer;
+    std::function<IdAndValue()> _serializer;
 };
 ```
 ```cpp
@@ -1132,14 +1132,14 @@ class AnyParameter {
 public:
     template <typename T>
     AnyParameter(const T& parameterRef)
-        : serializer{[&]() -> IdAndValue {
+        : _serializer{[&]() -> IdAndValue {
               return serializeImpl(parameterRef);
           }} {}
 
-    IdAndValue serialize() const { return serializer(); }
+    IdAndValue serialize() const { return _serializer(); }
 
 private:
-    std::copyable_function<IdAndValue() const> serializer; // C++ 26
+    std::copyable_function<IdAndValue() const> _serializer; // C++ 26
 };
 ```
 ````
