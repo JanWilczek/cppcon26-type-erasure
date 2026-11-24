@@ -1352,6 +1352,71 @@ c.empty();  // true
 
 ---
 
+# Serialization using reflection
+
+https://github.com/JanWilczek/EdenSynth/blob/jan/parameter-reflection/EdenSynth/SharedCode_test/source/ParameterReflectionTest.cpp
+
+```cpp {all|1-3|4-11}
+IdAndValue serializeImpl(juce::AudioParameterFloat& p);
+IdAndValue serializeImpl(juce::AudioParameterBool& p);
+//...
+class PluginProcessorWithReflectedParameters : public juce::AudioProcessor {
+public:
+  //...
+  juce::AudioParameterFloat& floatParam;
+  juce::AudioParameterBool& boolParam;
+  juce::AudioParameterInt& intParam;
+  juce::AudioParameterChoice& choiceParam;
+};
+```
+
+---
+
+# Serialization using reflection
+
+https://github.com/JanWilczek/EdenSynth/blob/jan/parameter-reflection/EdenSynth/SharedCode_test/source/ParameterReflectionTest.cpp
+
+```cpp {all|1-2|3|5|7-8|9|10|11|12|17|all}
+template <typename T>
+std::vector<IdAndValue> parameterIdsAndValues(const T& parameterHolder) {
+  using namespace std::meta;
+
+  std::vector<IdAndValue> result;
+
+  template for (constexpr auto member : std::define_static_array(
+        nonstatic_data_members_of(^^T, access_context::current()))) {
+    if constexpr (is_base_of_type(^^juce::AudioProcessorParameter, remove_reference(type_of(member)))) {
+      result.emplace_back(
+          parameterHolder.[:member:].getParameterID().toStdString(),
+          serializeImpl(parameterHolder.[:member:])
+      );
+    }
+  }
+
+  return result;
+}
+```
+
+---
+
+# Serialization using reflection
+
+<v-clicks>
+
+## Pros
+
+- One function to rule them all
+
+## Cons
+
+- Currently available only on GCC (tested with GCC 16.0.1, `-std=c++26`, and `-freflection`)
+
+</v-clicks>
+
+<!-- AppleClang still doesn't support std::jthread (C++20) -->
+
+---
+
 # Conclusion
 
 <v-clicks>
