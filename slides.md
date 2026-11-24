@@ -418,9 +418,9 @@ std::vector<IdAndValue> serializeParameters(
     const juce::AudioParameterChoice& choiceParam) {
 
     return {
-        { .id = floatParam.getParameterID().toStdString(),  .value = floatParam.get() }
-        { .id = intParam.getParameterID().toStdString(),    .value = intParam.get() }
-        { .id = boolParam.getParameterID().toStdString(),   .value = boolParam.get() }
+        { .id = floatParam.getParameterID().toStdString(),  .value = floatParam.get() },
+        { .id = intParam.getParameterID().toStdString(),    .value = intParam.get() },
+        { .id = boolParam.getParameterID().toStdString(),   .value = boolParam.get() },
         { .id = choiceParam.getParameterID().toStdString(),
           .value = choiceParam.getCurrentChoiceName().toStdString() } // 👈
     };
@@ -533,7 +533,7 @@ std::vector<IdAndValue> serializeParameters(const std::vector<juce::RangedAudioP
     return
         parameters
             | std::views::transform(
-                [](auto const* p) -> IdAndValue {
+                [](const auto* p) -> IdAndValue {
                     return {
                         .id = p->getParameterID().toStdString(),
                         .value = p->convertFrom0to1(p->getValue())
@@ -825,8 +825,8 @@ private:
 };
 ```
 ```cpp {1-3,7,12,18}
-IdAndValue serializeImpl(juce::AudioParameterFloat& p);
-IdAndValue serializeImpl(juce::AudioParameterBool& p);
+IdAndValue serializeImpl(const juce::AudioParameterFloat& p);
+IdAndValue serializeImpl(const juce::AudioParameterBool& p);
 //...
 class TypeErasedParameter {
 public:
@@ -856,15 +856,15 @@ private:
 
 # Serialization
 
-```cpp {1-4|6-10}
+```cpp {1-4|6-9}
 template <typename T>
 IdAndValue serializeImpl(const T& parameter) {
-  return { parameter.getParameterID().toStdString(), parameter.get() };
+  return { .id = parameter.getParameterID().toStdString(), .value = parameter.get() };
 }
 
-template <>
-IdAndValue serializeImpl<juce::AudioParameterChoice>(const juce::AudioParameterChoice& parameter) {
-  return { parameter.getParameterID().toStdString(), parameter.getCurrentChoiceName().toStdString() };
+IdAndValue serializeImpl(const juce::AudioParameterChoice& parameter) {
+  return { .id = parameter.getParameterID().toStdString(),
+           .value = parameter.getCurrentChoiceName().toStdString() };
 }
 ```
 
@@ -884,9 +884,9 @@ std::vector<IdAndValue> serializeParameters(const std::vector<TypeErasedParamete
 
 <v-clicks>
 
-`TypeErasedParameter` and `seralizeParameters()` don't depend on any JUCE class anymore!
+`TypeErasedParameter` and `serializeParameters()` don't depend on any JUCE class anymore!
 
-The only requirement for type `T` contained in `TypeErasedParameter` is the presence of the `serializeImpl(T const&)` overload.
+The only requirement for type `T` contained in `TypeErasedParameter` is the presence of the `serializeImpl(const T&)` overload.
 
 </v-clicks>
 
@@ -898,7 +898,7 @@ The only requirement for type `T` contained in `TypeErasedParameter` is the pres
 
 ```cpp {1-6,11,16,22}
 struct Visitor {
-    virtual ~Visitor = default;
+    virtual ~Visitor() = default;
     virtual void visit(juce::AudioParameterFloat& p) = 0;
     virtual void visit(juce::AudioParameterBool& p) = 0;
     //...
@@ -1048,8 +1048,8 @@ private:
 # Type-erased parameter leveraging STL
 
 ```cpp {all|1-2|17-18|6-7|8,17|9-12,18|10|11|14}
-IdAndValue serializeImpl(juce::AudioParameterFloat& p);
-IdAndValue serializeImpl(juce::AudioParameterBool& p);
+IdAndValue serializeImpl(const juce::AudioParameterFloat& p);
+IdAndValue serializeImpl(const juce::AudioParameterBool& p);
 // ...
 class AnyParameter {
 public:
@@ -1272,8 +1272,8 @@ std::get<choiceParam>(processor.parameters).getCurrentChoiceName();
 ## Serialization
 
 ```cpp {1-2|4-5|6|8,14|9-13|10-12}
-IdAndValue serializeImpl(juce::AudioParameterFloat& p);
-IdAndValue serializeImpl(juce::AudioParameterBool& p);
+IdAndValue serializeImpl(const juce::AudioParameterFloat& p);
+IdAndValue serializeImpl(const juce::AudioParameterBool& p);
 //...
 template <typename... Ts>
 std::vector<IdAndValue> serializeParameters(const std::tuple<Ts...>& parameters) {
@@ -1357,8 +1357,8 @@ c.empty();  // true
 https://github.com/JanWilczek/EdenSynth/blob/jan/parameter-reflection/EdenSynth/SharedCode_test/source/ParameterReflectionTest.cpp
 
 ```cpp {all|1-3|4-11}
-IdAndValue serializeImpl(juce::AudioParameterFloat& p);
-IdAndValue serializeImpl(juce::AudioParameterBool& p);
+IdAndValue serializeImpl(const juce::AudioParameterFloat& p);
+IdAndValue serializeImpl(const juce::AudioParameterBool& p);
 //...
 class PluginProcessorWithReflectedParameters : public juce::AudioProcessor {
 public:
@@ -1378,7 +1378,7 @@ https://github.com/JanWilczek/EdenSynth/blob/jan/parameter-reflection/EdenSynth/
 
 ```cpp {all|1-2|3|5|7-8|9|10|11|16|all}
 template <typename T>
-std::vector<IdAndValue> parameterIdsAndValues(const T& parameterHolder) {
+std::vector<IdAndValue> serializeParameters(const T& parameterHolder) {
   using namespace std::meta;
 
   std::vector<IdAndValue> result;
