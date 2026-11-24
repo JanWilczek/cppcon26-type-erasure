@@ -1316,6 +1316,13 @@ std::vector<IdAndValue> serializeParameters(const std::tuple<Ts...>& parameters)
 </v-clicks>
 
 ---
+layout: image
+---
+
+<img src="./assets/elephant.jpg" class="absolute right-[5%] top-1/2 -translate-y-1/2 w-[40%]" />
+<img v-click src="./assets/elephant.jpg" class="absolute left-[5%] top-1/2 -translate-y-1/2 w-[40%] -scale-x-100 opacity-40" />
+
+---
 
 # Conclusion
 
