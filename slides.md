@@ -1324,6 +1324,34 @@ layout: image
 
 ---
 
+# Automatic type erasure with `rjk::duck`
+
+https://github.com/RyanJK5/rjk-duck
+
+```cpp {all|1|4-8|10-11|13-14|16-19}
+#include <rjk/duck.hpp>
+// ...
+
+struct [[=rjk::trait]] Container {
+    auto size()  const -> std::size_t;
+    auto empty() const -> bool;
+    auto clear()       -> void;
+};
+
+rjk::duck<Container> c{std::vector<int>{1, 2, 3}};
+c.size();   // 3
+
+c = std::string{"hello"};  // swap underlying type at runtime
+c.size();   // 5
+
+c = std::map<int, int>{{1, 2}, {3, 4}};
+c.empty();  // false
+c.clear();
+c.empty();  // true
+```
+
+---
+
 # Conclusion
 
 <v-clicks>
