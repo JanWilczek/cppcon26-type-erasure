@@ -1398,6 +1398,16 @@ std::vector<IdAndValue> serializeParameters(const T& parameterHolder) {
 
 ---
 
+# "A gentle introduction to reflection" 
+
+## Lieven De Cock
+
+Today at 4 PM (Track B/Opal)
+
+<img src="./assets/Lieven.jpeg" class="h-80 rounded-full shadow-xl"/>
+
+---
+
 # Serialization using reflection
 
 <v-clicks>
