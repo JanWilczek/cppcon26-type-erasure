@@ -5,7 +5,8 @@
   "scripts": {
     "build": "slidev build",
     "dev": "slidev --open",
-    "export": "slidev export --per-slide"
+    "export": "slidev export --per-slide",
+    "export:clicks": "node scripts/export-with-clicks.mjs"
   },
   "dependencies": {
     "@slidev/cli": "^52.15.2",
